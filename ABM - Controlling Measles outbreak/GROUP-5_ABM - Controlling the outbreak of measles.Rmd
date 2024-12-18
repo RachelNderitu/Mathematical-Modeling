@@ -1,0 +1,514 @@
+---
+title: "ABM - Controlling the outbreak of measles"
+author: "Rachel"
+date: "2024-07-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Load necessary libraries
+library(deSolve)
+library(tidyverse)
+library(DiagrammeR)
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+library(sna)
+library(knitr)
+library(reshape2)
+library(igraph)
+
+# Define parameters
+population_size <- 500
+initial_susceptible <- 450
+initial_infected <- 50
+initial_recovered <- 0
+initial_exposed <- 0
+
+# Disease parameters
+prob_transmission <- 0.008
+incubation_period <- 12 # days
+infectious_period <- 8 # days
+R0 <- 12 # Basic Reproductive Number
+exposure_rate <- 1 / incubation_period
+infected_rate <- prob_transmission
+recovery_rate <- 1 / infectious_period
+simulation_period <- 60 # days
+
+# State definitions
+STATES <- 4
+STATENAMES <- c("Susceptible", "Exposed", "Infected", "Recovered")
+
+# Age groups and contact rates
+age_groups <- c("Infant", "Child", "Adult")
+age_group_distribution <- c(0.4, 0.4, 0.2)  # Proportions of each age group
+contact_rates <- c("Infant" = 5, "Child" = 16, "Adult" = 10)
+
+# Agent creation function
+makeAgent <- function(psychstate, biostate, age_group) {
+  return(list(
+    psychstate = psychstate,
+    biostate = biostate,
+    age_group = age_group,
+    nextbiostate = NA,
+    biostatecountdown = NA
+  ))
+}
+
+# Transition matrix and timing distributions
+bioTransition <- matrix(0, STATES, STATES)
+bioMin <- matrix(1, STATES)  # State time minimum
+bioMax <- matrix(1, STATES)  # State time maximum
+
+# Transition rates
+bioMin[2] <- 12  # Exposed for 12 days
+bioMax[2] <- 12
+bioTransition[2, 3] <- 1  # Transition to infected
+
+bioMin[3] <- 8  # Infected for 8 days
+bioMax[3] <- 8
+bioTransition[3, 4] <- 1  # Transition to recovered
+
+setAgentState <- function(agent, biostate) {
+  agent$biostate <- biostate
+  if (sum(bioTransition[biostate, ]) > 0) {  # This state transitions to something else.
+    agent$biostatecountdown <- sample(x = seq(bioMin[biostate], bioMax[biostate]), 1)  # How long will we stay in this state?
+    agent$nextbiostate <- sample(1:STATES, prob = bioTransition[agent$biostate, ], size = 1)
+  } else {
+    agent$biostatecountdown <- NA
+    agent$nextbiostate <- NA  # Just so we can tell if the agent is finished.
+  }
+  return(agent)
+}
+
+transitionAgent <- function(agent) {
+  return(setAgentState(agent, agent$nextbiostate))
+}
+
+updateAgent <- function(agent) {
+  if (!is.na(agent$biostatecountdown)) {
+    agent$biostatecountdown <- agent$biostatecountdown - 1
+    if (agent$biostatecountdown <= 0) {  # New state
+      agent <- transitionAgent(agent)
+    }
+  }
+  return(agent)
+}
+
+# Social network creation functions
+makeDemographicNetwork <- function(numAgents = population_size, numSchools = 4, numChurches = 10, neighborhoodRadius = 2) {
+  ages <- sample(age_groups, numAgents, replace = TRUE, prob = age_group_distribution)
+  
+  # Assign people to households
+  householdXY <- matrix(runif(numAgents * 2) * 10, ncol = 2)
+  myHousehold <- sample(numAgents, numAgents, replace = TRUE)
+  
+  # Assign schools and churches
+  schools <- sample(1:numSchools, numAgents, replace = TRUE)
+  churches <- sample(1:numChurches, numAgents, replace = TRUE)
+  
+  pool <- list()
+  for (i in 1:numAgents) {
+    tmpAgent <- makeAgent(psychstate = 1, biostate = 1, age_group = ages[i])
+    tmpAgent$household <- myHousehold[i]
+    tmpAgent$school <- schools[i]
+    tmpAgent$church <- churches[i]
+    tmpAgent$xy <- householdXY[i, ]
+    pool[[i]] <- tmpAgent
+  }
+  
+  # Create adjacency matrices
+  schoolmat <- (outer(schools, schools, "==") * outer(schools, schools, "*")) > 0
+  churchmat <- (outer(churches, churches, "==") * outer(churches, churches, "*")) > 0
+  housemat <- (outer(myHousehold, myHousehold, "==")) > 0
+  neighborhood <- as.matrix(dist(householdXY)) < neighborhoodRadius
+  
+  network <- schoolmat + churchmat + housemat + neighborhood
+  return(list(xy = householdXY, pool = pool, network = network, neighborhood = neighborhood, schoolnet = schoolmat, churchnet = churchmat, housenet = housemat))
+}
+
+mygplot <- function(coord, network, states, main = "", edgecol = "grey40", add = FALSE) {
+  if (is.null(coord)) {
+    coord <- gplot.layout.fruchtermanreingold(network, layout.par = list(niter = 500))
+  }
+  newmin <- mean(coord[, 2]) - (-min(coord[, 2]) + mean(coord[, 2])) * 1.4
+  palette <- c("white", "yellow", "red", "green")
+  if (add == FALSE)
+    plot(coord, col = "black", bty = "n", pch = 16, cex = 2.7, xaxt = "n", yaxt = "n", main = main,
+         xlab = "", ylab = "", axes = FALSE, ylim = c(newmin, max(coord[, 2])), type = "n")
+  
+  for (i in 1:nrow(network)) {
+    if (sum(network[i, ]) > 0) {
+      segments(coord[i, 1], coord[i, 2], coord[network[i, ] > 0, 1, drop = FALSE], coord[network[i, ] > 0, 2, drop = FALSE], col = edgecol)
+    }
+  }
+  points(coord, pch = 16, cex = 2.3, col = palette[states])
+  points(coord, pch = 1, cex = 2.3, col = "black")
+  legend(mean(coord[, 1]), min(coord[, 2]), bty = 'n', y.intersp = .7, cex = .8, STATENAMES, pch = 16, col = palette)
+  return(coord)
+}
+
+# Create the network and plot it
+net <- makeDemographicNetwork(numAgents = population_size, numSchools = 4, numChurches = 10)
+cc <- mygplot(coord = net$xy, net$housenet, rep(1, nrow(net$network)), main = "Households", edgecol = "blue")
+cc <- mygplot(coord = net$xy, net$schoolnet + 0, rep(1, nrow(net$network)), main = "Schools", edgecol = "orange")
+cc <- mygplot(coord = net$xy, net$churchnet + 0, rep(1, nrow(net$network)), main = "Churches", edgecol = "darkgreen")
+cc <- mygplot(coord = net$xy, net$neighborhood, rep(1, nrow(net$network)), main = "Neighborhood network", edgecol = "brown")
+cc <- mygplot(coord = net$xy, net$network, rep(1, nrow(net$network)), main = "Combined network")
+cc <- mygplot(coord = net$xy, net$housenet, rep(1, nrow(net$network)), main = "Household network", edgecol = "blue", add = TRUE)
+cc <- mygplot(coord = net$xy, net$schoolnet + 0, rep(1, nrow(net$network)), main = "School network", edgecol = "orange", add = TRUE)
+cc <- mygplot(coord = net$xy, net$churchnet + 0, rep(1, nrow(net$network)), main = "Church network", edgecol = "darkgreen", add = TRUE)
+cc <- mygplot(coord = net$xy, net$neighborhood, rep(1, nrow(net$network)), main = "Neighborhood network", edgecol = "brown", add = TRUE)
+```
+
+
+```{r}
+# Simulation parameters
+numAgents <- population_size
+numDays <- simulation_period
+numInteractions <- rep(8, numDays)  ## how many interactions per day per agent on average?
+contagionProb <- rep(0.03, numDays)    ## normal contagion probability after contact
+sampleFromNetwork <- rep(1.0, numDays)  ## how likely you are to stick with 'your' network
+
+plotNetwork <- TRUE
+
+if (plotNetwork) {
+  cc <- mygplot(coord = net$xy, net$network, rep(1, nrow(net$network)), main = "Initial state")
+}
+
+disthistory <- matrix(NA, ncol = 4, nrow = numDays)  # Adjusted for 4 states
+
+pool <- list()
+for (i in 1:numAgents) {
+  pool[[i]] <- makeAgent(psychstate = 1, biostate = 1, age_group = sample(age_groups, 1, prob = age_group_distribution))
+}
+
+# Infect initial patients
+numInfected <- 5
+for (i in sample(numAgents, numInfected)) {
+  pool[[i]] <- setAgentState(pool[[i]], 2)  ## infect this person
+}
+
+for (day in 1:numDays) {
+  # Create network from individual church/schools/etc. 
+  sneezers <- rep(1:numAgents, each = numInteractions[day])
+  sneezedons <- rep(NA, length(sneezers))
+  
+  for (i in 1:length(sneezers)) {
+    if (runif(1) < (1 - sampleFromNetwork[day])) {
+      sneezedons[i] <- sample(numAgents, 1)
+    } else {
+      sneezedons[i] <- sample(1:numAgents, prob = net$network[sneezers[i], ], 1)
+    }
+  }
+  
+  for (i in 1:length(sneezers)) {
+    agent1 <- pool[[sneezers[i]]]
+    agent2 <- pool[[sneezedons[i]]]
+    
+    ## This constitutes the rules of infection.
+    if ((agent1$biostate == 2 || agent1$biostate == 3) & agent2$biostate == 1 & runif(1) < contagionProb[day]) {
+      pool[[sneezedons[i]]] <- setAgentState(agent2, 2)  ## infect!
+    }
+  }
+  
+  ## Increment each agent 1-day.
+  for (i in 1:numAgents) {
+    pool[[i]] <- updateAgent(pool[[i]])
+  }
+  
+  states <- sapply(pool, FUN = function(x) { x$biostate })
+  distrib <- table(factor(states, levels = 1:4))
+  disthistory[day, ] <- distrib
+  if (plotNetwork) {
+    mygplot(cc, net$network, states, main = paste("Day", day))
+  }
+}
+
+```
+
+
+
+```{r}
+# Convert disthistory to data frame for visualization
+disthist.df <- as.data.frame(disthistory)
+colnames(disthist.df) <- STATENAMES
+disthist.df$day <- 1:nrow(disthistory)
+histlong <- melt(disthist.df, id.vars = "day")
+
+# Plot stacked bar chart
+ggplot(histlong, aes(x = day, y = value, fill = variable)) + 
+  geom_bar(stat = "identity", position = "stack") + 
+  theme_bw()
+
+# Create the SEIR plot:
+sir <- data.frame(
+  day = disthist.df$day,
+  susceptible = disthist.df$Susceptible,
+  exposed = disthist.df$Exposed,
+  infected = disthist.df$Infected,
+  recovered = disthist.df$Recovered
+)
+
+ggplot(melt(sir, id.vars = "day"), aes(x = day, group = variable, y = value, color = variable)) + 
+  geom_line() + 
+  theme_bw()
+```
+
+
+```{r}
+# Herd Vaccination Implementation
+herd_vaccinate <- function(agent_list, vaccination_rate) {
+  num_agents <- length(agent_list)
+  num_vaccinated <- ceiling(vaccination_rate * num_agents)
+  vaccinated_indices <- sample(seq_len(num_agents), num_vaccinated)
+  
+  for (i in vaccinated_indices) {
+    agent_list[[i]]$psychstate <- 2 # Vaccinated state (immunity)
+    agent_list[[i]]$biostate <- 2   # Vaccinated agents do not transition to recovered (adjust as needed)
+    agent_list[[i]]$biostatecountdown <- NA
+    agent_list[[i]]$nextbiostate <- NA
+  }
+  
+  return(agent_list)
+}
+
+# Apply herd vaccination
+vaccination_rate <- 0.1 # 10% vaccination rate
+net$pool <- herd_vaccinate(net$pool, vaccination_rate)
+
+# Re-run the simulation after vaccination
+disthistory_herd <- matrix(NA, ncol = 4, nrow = numDays)  # Adjusted for 4 states
+
+for (day in 1:numDays) {
+  sneezers <- rep(1:numAgents, each = numInteractions[day])
+  sneezedons <- rep(NA, length(sneezers))
+  
+  for (i in 1:length(sneezers)) {
+    if (runif(1) < (1 - sampleFromNetwork[day])) {
+      sneezedons[i] <- sample(numAgents, 1)
+    } else {
+      sneezedons[i] <- sample(1:numAgents, prob = net$network[sneezers[i], ], 1)
+    }
+  }
+  
+  for (i in 1:length(sneezers)) {
+    agent1 <- pool[[sneezers[i]]]
+    agent2 <- pool[[sneezedons[i]]]
+    
+    if ((agent1$biostate == 2 || agent1$biostate == 3) & agent2$biostate == 1 & runif(1) < contagionProb[day]) {
+      pool[[sneezedons[i]]] <- setAgentState(agent2, 2)  ## infect!
+    }
+  }
+  
+  for (i in 1:numAgents) {
+    pool[[i]] <- updateAgent(pool[[i]])
+  }
+  
+  states <- sapply(pool, FUN = function(x) { x$biostate })
+  distrib <- table(factor(states, levels = 1:4))
+  disthistory_herd[day, ] <- distrib
+}
+
+# Convert disthistory_herd to data frame for visualization
+disthist_herd.df <- as.data.frame(disthistory_herd)
+colnames(disthist_herd.df) <- STATENAMES
+disthist_herd.df$day <- 1:nrow(disthistory_herd)
+histlong_herd <- melt(disthist_herd.df, id.vars = "day")
+
+# Create the SEIR plot for herd vaccination
+sir_herd <- data.frame(
+  day = disthist_herd.df$day,
+  susceptible = disthist_herd.df$Susceptible,
+  exposed = disthist_herd.df$Exposed,
+  infected = disthist_herd.df$Infected,
+  recovered = disthist_herd.df$Recovered
+)
+
+ggplot(melt(sir_herd, id.vars = "day"), aes(x = day, group = variable, y = value, color = variable)) + 
+  geom_line() + 
+  theme_bw()
+
+
+```
+
+
+```{r}
+# Ring Vaccination Implementation
+ring_vaccinate <- function(agent_list, network, center_indices, vaccination_rate) {
+  num_agents <- length(agent_list)
+  
+  vaccinated <- rep(FALSE, num_agents)
+  queue <- center_indices
+  vaccinated[queue] <- TRUE
+  
+  while (length(queue) > 0) {
+    current <- queue[1]
+    queue <- queue[-1]
+    
+    # Get neighbors
+    neighbors <- which(network[current, ] > 0)
+    
+    # Vaccinate neighbors if not already vaccinated
+    for (neighbor in neighbors) {
+      if (!vaccinated[neighbor]) {
+        vaccinated[neighbor] <- TRUE
+        queue <- c(queue, neighbor)
+      }
+    }
+  }
+  
+  # Apply vaccination rate
+  num_vaccinated <- ceiling(vaccination_rate * num_agents)
+  if (sum(vaccinated) < num_vaccinated) {
+    non_vaccinated_indices <- which(!vaccinated)
+    additional_vaccinated <- sample(non_vaccinated_indices, min(num_vaccinated - sum(vaccinated), length(non_vaccinated_indices)))
+    vaccinated[additional_vaccinated] <- TRUE
+  }
+  
+  for (i in seq_len(num_agents)) {
+    if (vaccinated[i]) {
+      agent_list[[i]]$psychstate <- 2 # Vaccinated state (immunity)
+      agent_list[[i]]$biostate <- 2   # Vaccinated agents do not transition to recovered (adjust as needed)
+      agent_list[[i]]$biostatecountdown <- NA
+      agent_list[[i]]$nextbiostate <- NA
+    }
+  }
+  
+  return(agent_list)
+}
+
+# Apply ring vaccination
+center_indices <- which(sapply(net$pool, function(x) x$biostate == 1))[1:10] # Example: first 10 agents as centers
+vaccination_rate <- 0.1 # 10% vaccination rate
+net$pool <- ring_vaccinate(net$pool, net$network, center_indices, vaccination_rate)
+
+# Re-run the simulation after vaccination
+disthistory_ring <- matrix(NA, ncol = 4, nrow = numDays)  # Adjusted for 4 states
+
+for (day in 1:numDays) {
+  sneezers <- rep(1:numAgents, each = numInteractions[day])
+  sneezedons <- rep(NA, length(sneezers))
+  
+  for (i in 1:length(sneezers)) {
+    if (runif(1) < (1 - sampleFromNetwork[day])) {
+      sneezedons[i] <- sample(numAgents, 1)
+    } else {
+      sneezedons[i] <- sample(1:numAgents, prob = net$network[sneezers[i], ], 1)
+    }
+  }
+  
+  for (i in 1:length(sneezers)) {
+    agent1 <- pool[[sneezers[i]]]
+    agent2 <- pool[[sneezedons[i]]]
+    
+    if ((agent1$biostate == 2 || agent1$biostate == 3) & agent2$biostate == 1 & runif(1) < contagionProb[day]) {
+      pool[[sneezedons[i]]] <- setAgentState(agent2, 2)  ## infect!
+    }
+  }
+  
+  for (i in 1:numAgents) {
+    pool[[i]] <- updateAgent(pool[[i]])
+  }
+  
+  states <- sapply(pool, FUN = function(x) { x$biostate })
+  distrib <- table(factor(states, levels = 1:4))
+  disthistory_ring[day, ] <- distrib
+}
+
+# Convert disthistory_ring to data frame for visualization
+disthist_ring.df <- as.data.frame(disthistory_ring)
+colnames(disthist_ring.df) <- STATENAMES
+disthist_ring.df$day <- 1:nrow(disthistory_ring)
+histlong_ring <- melt(disthist_ring.df, id.vars = "day")
+
+# Create the SEIR plot for ring vaccination
+sir_ring <- data.frame(
+  day = disthist_ring.df$day,
+  susceptible = disthist_ring.df$Susceptible,
+  exposed = disthist_ring.df$Exposed,
+  infected = disthist_ring.df$Infected,
+  recovered = disthist_ring.df$Recovered
+)
+
+ggplot(melt(sir_ring, id.vars = "day"), aes(x = day, group = variable, y = value, color = variable)) + 
+  geom_line() + 
+  theme_bw()
+
+```
+
+
+```{r}
+# Full Vaccination Implementation
+full_vaccinate <- function(agent_list) {
+  for (i in seq_along(agent_list)) {
+    agent_list[[i]]$psychstate <- 2 # Vaccinated state (immunity)
+    agent_list[[i]]$biostate <- 2   # Vaccinated agents do not transition to recovered (adjust as needed)
+    agent_list[[i]]$biostatecountdown <- NA
+    agent_list[[i]]$nextbiostate <- NA
+  }
+  
+  return(agent_list)
+}
+
+# Apply full vaccination
+net$pool <- full_vaccinate(net$pool)
+
+# Re-run the simulation after vaccination
+disthistory_full <- matrix(NA, ncol = 4, nrow = numDays)  # Adjusted for 4 states
+
+for (day in 1:numDays) {
+  sneezers <- rep(1:numAgents, each = numInteractions[day])
+  sneezedons <- rep(NA, length(sneezers))
+  
+  for (i in 1:length(sneezers)) {
+    if (runif(1) < (1 - sampleFromNetwork[day])) {
+      sneezedons[i] <- sample(numAgents, 1)
+    } else {
+      sneezedons[i] <- sample(1:numAgents, prob = net$network[sneezers[i], ], 1)
+    }
+  }
+  
+  for (i in 1:length(sneezers)) {
+    agent1 <- pool[[sneezers[i]]]
+    agent2 <- pool[[sneezedons[i]]]
+    
+    if ((agent1$biostate == 2 || agent1$biostate == 3) & agent2$biostate == 1 & runif(1) < contagionProb[day]) {
+      pool[[sneezedons[i]]] <- setAgentState(agent2, 2)  ## infect!
+    }
+  }
+  
+  for (i in 1:numAgents) {
+    pool[[i]] <- updateAgent(pool[[i]])
+  }
+  
+  states <- sapply(pool, FUN = function(x) { x$biostate })
+  distrib <- table(factor(states, levels = 1:4))
+  disthistory_full[day, ] <- distrib
+}
+
+# Convert disthistory_full to data frame for visualization
+disthist_full.df <- as.data.frame(disthistory_full)
+colnames(disthist_full.df) <- STATENAMES
+disthist_full.df$day <- 1:nrow(disthistory_full)
+histlong_full <- melt(disthist_full.df, id.vars = "day")
+
+# Create the SEIR plot for full vaccination
+sir_full <- data.frame(
+  day = disthist_full.df$day,
+  susceptible = disthist_full.df$Susceptible,
+  exposed = disthist_full.df$Exposed,
+  infected = disthist_full.df$Infected,
+  recovered = disthist_full.df$Recovered
+)
+
+ggplot(melt(sir_full, id.vars = "day"), aes(x = day, group = variable, y = value, color = variable)) + 
+  geom_line() + 
+  theme_bw()
+
+```
+

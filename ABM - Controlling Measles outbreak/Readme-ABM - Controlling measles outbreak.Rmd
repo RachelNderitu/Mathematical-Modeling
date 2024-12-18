@@ -1,0 +1,70 @@
+---
+title: "ABM - Controlling the outbreak of measles"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+The goal of this project is to investigate how long it would take to control an outbreak of measles in a confined setting, using an established ABM.
+
+***SEIR Model with Vaccination Scenarios***
+
+This project simulates the spread of a disease using a SEIR (Susceptible, Exposed, Infected, Recovered) model, incorporating demographic networks and various vaccination strategies. It visualizes the effects of interventions like herd vaccination, ring vaccination, and full vaccination on the progression of an epidemic.
+
+***1. SEIR Model Setup***
+
+Population: 500 individuals, distributed across households, schools, churches, and neighborhoods.
+States:
+Susceptible: Healthy but at risk of infection.
+Exposed: Infected but not yet infectious.
+Infected: Actively contagious.
+Recovered: Immune after infection or vaccination.
+Parameters:
+Basic Reproductive Number (𝑅0 ): 12.
+Probabilities: Transmission = 0.008, Recovery rate = 1/8, Exposure rate = 1/12.
+Simulation period: 60 days.
+
+***2. Network Structure***
+
+Social connections simulated using adjacency matrices for:
+Households, schools, churches, neighborhoods, and combined networks.
+Agents interact through these networks to model realistic contact patterns.
+
+***3. Vaccination Strategies***
+The project implements three vaccination strategies to analyze their impact on disease dynamics:
+
+**Herd Vaccination**
+
+A random subset (10%) of the population is vaccinated.
+Reduced disease spread, delayed and lowered infection peaks.
+
+**Ring Vaccination**
+
+Focused on vaccinating individuals surrounding identified infected agents.
+Effective at targeting high-risk groups and limiting the spread within specific networks.
+
+**Full Vaccination**
+
+Entire population vaccinated, effectively stopping the epidemic.
+Visualization shows no infections and a sharp decline in susceptible individuals.
+
+***4. Simulation Results***
+
+**Pre-Vaccination**
+
+Rapid increase in infections with a peak early in the simulation.
+Limited recovery by the end of the simulation period due to the absence of intervention.
+
+**Post-Vaccination**
+
+Herd and ring vaccination strategies mitigate infection peaks, flattening the curve.
+Full vaccination eradicates infections, leaving only susceptible and recovered populations.
+
+***5. Visualization***
+
+Stacked Bar Charts: Show population distribution across SEIR states over time.
+Line Charts: Track trends for each state, demonstrating the progression of the epidemic under different scenarios.
+
+***Conclusion***
+
+This project highlights the effectiveness of targeted vaccination strategies in controlling disease spread. While herd and ring vaccinations reduce infections significantly, full vaccination eradicates the epidemic entirely. The model underscores the importance of vaccination in public health and demonstrates how network dynamics influence the outcomes of different intervention strategies.

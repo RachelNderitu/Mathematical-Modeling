@@ -1,0 +1,92 @@
+---
+title: "Readme - SIR Model"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+### **Summary of the SIR Model and Vaccination Effects Project**
+
+---
+
+#### **Objective**
+This project explores the effects of vaccination on the dynamics of infectious diseases using an extended SIR (Susceptible, Infected, Recovered) model. The goal is to analyze the impact of different vaccination strategies, including varying vaccination rates and immunity durations, to inform public health vaccination programs.
+
+---
+
+### **Key Investigations and Findings**
+
+#### **1. Baseline SIR Model (No Vaccination)**
+- **Setup:**
+  - Population: 200,000
+  - Initial infected: 1,000
+  - Transmission rate (\( \beta \)): 0.035
+  - Recovery rate (\( \gamma \)): 0.009
+  - Simulation period: 10 years (3650 days)
+
+- **Findings:**
+  - **Peak Infections:** ~50,000 individuals, occurring ~300 days after the start.
+  - **Total Infections:** Approximately 21.7 million over 10 years.
+  - The absence of vaccination leads to a rapid rise in infections, with a significant impact on the susceptible population.
+
+#### **2. Vaccination with Lifelong Immunity**
+- **Modification:**
+  - Introduced a vaccination rate (\( v \)) that transitions susceptible individuals directly to the recovered state.
+  - Determined the optimal vaccination rate to halve total infections.
+
+- **Findings:**
+  - **Optimal Vaccination Rate:** 0.0024 per day.
+  - **Impact:**
+    - Reduced total infections from 21.7 million to 10.6 million.
+    - Significantly lowered the infection peak and delayed its occurrence.
+    - Approximately 135,431 vaccinations were required to achieve these results.
+
+#### **3. Vaccination with Waning Immunity**
+- **Modification:**
+  - Introduced a waning immunity rate (\( \omega \)) where recovered individuals return to the susceptible state.
+  - Simulated the model with varying vaccination and waning rates.
+
+- **Findings:**
+  - **Optimal Vaccination Rate:** 0.004 per day, required due to waning immunity.
+  - **Vaccination Impact:**
+    - Reduced total infections from 131.5 million to 64.5 million (over 10 years).
+    - Peak infections reduced to ~83,482.
+    - Required ~832,408 vaccinations due to recurring susceptibility.
+  - Waning immunity led to higher peaks and increased total infections, emphasizing the need for booster doses or vaccines with long-lasting immunity.
+
+#### **4. Sensitivity Analysis**
+- Explored the relationship between vaccination and waning rates:
+  - **Vaccination Rate (\( v \)):**
+    - Increasing \( v \) reduces total and peak infections while delaying the epidemic's peak.
+  - **Waning Rate (\( \omega \)):**
+    - Higher \( \omega \) increases total and peak infections and accelerates the epidemic peak.
+    - Lower \( \omega \) (longer immunity) significantly enhances epidemic control.
+
+#### **5. Recommendations for Long-Lasting Immunity**
+- Modeled the target duration of immunity for epidemic control:
+  - Found that immunity should last at least 10-20 years to achieve effective control with moderate vaccination rates.
+  - Frequent boosters are necessary if immunity wanes rapidly.
+
+#### **6. Application to Real-Life Example (Influenza)**
+- **Influenza-Specific Adjustments:**
+  - Incorporated typical influenza parameters, such as an \( R_0 \) of 1.2–1.8 and immunity waning within 6–12 months.
+  - Modeled annual vaccination campaigns and potential booster doses.
+  - Emphasized the importance of vaccination timing, prioritizing high-risk groups, and leveraging real-time data for strategy refinement.
+
+---
+
+### **Conclusions**
+1. **Vaccination as a Key Strategy:**
+   - Vaccination significantly reduces the epidemic's burden, lowering peak infections and total cases.
+   - High vaccination rates are critical in mitigating the effects of waning immunity.
+
+2. **Immunity Duration Matters:**
+   - Longer-lasting immunity greatly enhances epidemic control and reduces the need for frequent booster shots.
+
+3. **Optimal Vaccination Rate:**
+   - Determined based on waning rates, population size, and disease dynamics to achieve specific public health goals.
+
+4. **Implications for Public Health:**
+   - Vaccination programs must balance coverage, timing, and immunity duration.
+   - For diseases like influenza, annual vaccination and real-time surveillance are essential for effective epidemic management.
+
+This project underscores the critical role of vaccination in epidemic control and offers a flexible framework for analyzing real-world diseases to inform public health policy.

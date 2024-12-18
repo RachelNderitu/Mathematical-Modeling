@@ -1,0 +1,632 @@
+---
+title: "SIR model and effects of vaccination"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+An effective vaccine is often the best means of controlling a disease. In this project, you will extend the simple SIR model to capture the effects of vaccination. You are going to model the impact of different vaccination scenarios to inform the design of a vaccination programme.
+What to investigate: some guidelines
+1.
+Simulate the disease over 10 years assuming no vaccination. What is the peak number of infections and when does this occur? What is the total number of infections that occurs over the whole course of the epidemic?
+
+
+```{r}
+
+library(deSolve)
+
+# Define the SIR model
+sir_model <- function(t, y, parms) {
+  with(as.list(c(y, parms)), {
+    dS <- -beta * S * I / N
+    dI <- beta * S * I / N - gamma * I
+    dR <- gamma * I
+    list(c(dS, dI, dR))
+  })
+}
+
+# Parameters
+N <- 200000      # Total population
+beta <- 0.035     # Infection rate
+gamma <- 0.009    # Recovery rate
+I0 <- 1000         # Initial number of infected individuals
+R0 <- 0         # Initial number of recovered individuals
+S0 <- N - I0    # Initial number of susceptible individuals
+
+# Time
+times <- seq(0, 10*365, by = 1)  # Time in days
+
+# Initial values
+init <- c(S = S0, I = I0, R = R0)
+parms <- c(beta = beta, gamma = gamma, N = N)
+
+# Run the simulation
+out <- ode(y = init, times = times, func = sir_model, parms = parms)
+
+# Convert output to a data frame
+out_df <- as.data.frame(out)
+
+# Find peak infections
+peak_infections <- max(out_df$I)
+peak_time <- out_df$time[which.max(out_df$I)]
+
+# Compute total number of infections
+total_infections <- sum(out_df$I) * diff(times[1:2])  # Approximate total infections
+
+# Plot results
+plot(out_df$time, out_df$S, type = 'l', col = 'blue', ylim = c(0, N), xlab = 'Time (days)', ylab = 'Number of People', main = 'SIR Model without Vaccination')
+lines(out_df$time, out_df$I, col = 'red')
+lines(out_df$time, out_df$R, col = 'green')
+legend("right", legend = c("Susceptible", "Infected", "Recovered"), col = c("blue", "red", "green"), lty = 1)
+
+# Print results
+cat(sprintf("Peak number of infections: %.0f\n", peak_infections))
+cat(sprintf("Time of peak infection (days): %.0f\n", peak_time))
+cat(sprintf("Total number of infections: %.0f\n", total_infections))
+
+```
+
+**Interpretation**
+
+- Blue Line (Susceptible) - The initial sharp decline represents the rapid spread of the infection, with many susceptible individuals becoming infected.
+
+- Red Line (Infected) - The rapid rise to a peak corresponds to the phase where the infection spreads most aggressively.
+The subsequent decline represents the recovery of individuals and the decrease in new infections as the susceptible pool shrinks.
+
+- Green Line (Recovered) - The steady rise corresponds to the accumulation of recovered individuals who are no longer susceptible to infection.
+
+***2.Now introduce a new parameter vx_rate and imagine that we only vaccinate susceptible people.***
+**a.If we assume that vaccination and infection confer perfect lifelong immunity, we can assume that it changes people’s state from susceptible to recovered. Implement this change to the model. Find the rate of vaccination that would be necessary to halve the number of infections over the course of the epidemic. Calculate the number of vaccinations needed to halve the number of infections.**
+
+```{r}
+library(deSolve)
+
+# Define the SIR model with vaccination as an intervention
+sir_model_vx <- function(t, y, parms) {
+  with(as.list(c(y, parms)), {
+    dS <- -beta * S * I / N - vx_rate * S
+    dI <- beta * S * I / N - gamma * I
+    dR <- gamma * I + vx_rate * S
+    list(c(dS, dI, dR))
+  })
+}
+
+# Parameters
+N <- 200000       # Total population
+beta <- 0.035     # Infection rate
+gamma <- 0.009    # Recovery rate
+I0 <- 1000        # Initial number of infected individuals
+R0 <- 0           # Initial number of recovered individuals
+S0 <- N - I0      # Initial number of susceptible individuals
+
+# Time
+times <- seq(0, 10*365, by = 1)  # Time in days
+
+# Initial values
+init <- c(S = S0, I = I0, R = R0)
+parms <- c(beta = beta, gamma = gamma, N = N, vx_rate = 0)
+
+# Function to simulate the model and return the total number of infections
+simulate_sir_vx <- function(vx_rate) {
+  parms["vx_rate"] <- vx_rate
+  out <- ode(y = init, times = times, func = sir_model_vx, parms = parms)
+  out_df <- as.data.frame(out)
+  total_infections <- sum(out_df$I) * diff(times[1:2])  # Approximate total infections
+  return(list(total_infections = total_infections, out_df = out_df))
+}
+
+# Calculate total infections without vaccination
+result_no_vx <- simulate_sir_vx(0)
+total_infections_no_vx <- result_no_vx$total_infections
+out_df_no_vx <- result_no_vx$out_df
+
+# Use a simple search algorithm to find the vaccination rate that halves the infections
+target_infections <- total_infections_no_vx / 2
+
+find_vx_rate <- function() {
+  vx_rate <- 0.0001
+  step <- 0.0001
+  total_infections <- simulate_sir_vx(vx_rate)$total_infections
+  while (total_infections > target_infections) {
+    vx_rate <- vx_rate + step
+    total_infections <- simulate_sir_vx(vx_rate)$total_infections
+  }
+  return(vx_rate)
+}
+
+optimal_vx_rate <- find_vx_rate()
+cat(sprintf("Optimal vaccination rate to halve infections: %.5f\n", optimal_vx_rate))
+
+# Calculate total number of vaccinations needed
+total_vaccinations <- optimal_vx_rate * sum(out_df_no_vx$S) * diff(times[1:2])
+cat(sprintf("Total number of vaccinations needed: %.0f\n", total_vaccinations))
+
+# Run the simulation with the optimal vaccination rate
+result_vx <- simulate_sir_vx(optimal_vx_rate)
+out_df_vx <- result_vx$out_df
+total_infections_vx <- result_vx$total_infections
+
+# Plot results
+plot(out_df_no_vx$time, out_df_no_vx$S, type = 'l', col = 'blue', ylim = c(0, N), xlab = 'Time (days)', ylab = 'Number of People', main = 'SIR Model with Optimal Vaccination Rate')
+lines(out_df_no_vx$time, out_df_no_vx$I, col = 'red')
+lines(out_df_no_vx$time, out_df_no_vx$R, col = 'forestgreen')
+lines(out_df_vx$time, out_df_vx$S, col = 'blue', lty = 2)
+lines(out_df_vx$time, out_df_vx$I, col = 'orange')
+lines(out_df_vx$time, out_df_vx$R, col = 'forestgreen', lty = 2)
+legend("right", legend = c("Susceptible (no Vx)", "Infected (no Vx)", "Recovered (no Vx)", "Susceptible (Vx)", "Infected (Vx)", "Recovered (Vx)"), col = c("blue", "red", "forestgreen", "blue", "orange", "forestgreen"), lty = c(1, 1, 1, 2, 1, 2))
+
+# Print results
+cat(sprintf("Peak number of infections without vaccination: %.0f\n", max(out_df_no_vx$I)))
+cat(sprintf("Time of peak infection without vaccination (days): %.0f\n", out_df_no_vx$time[which.max(out_df_no_vx$I)]))
+cat(sprintf("Total number of infections without vaccination: %.0f\n", total_infections_no_vx))
+cat(sprintf("Total number of infections with vaccination: %.0f\n", total_infections_vx))
+
+```
+
+
+**Interpretation**
+
+- Optimal vaccination rate to halve infections: 0.00240
+This is the vaccination rate required to reduce the total number of infections by half over the course of the epidemic. 
+
+- Vaccination Impact - With vaccination, the total number of infections drops from 21,729,335 to 10,643,442, showing a substantial decrease in the infection burden due to the vaccination strategy.
+
+**Susceptible Population**
+
+- Without Vaccination (Solid Blue Line) - The number of susceptible individuals decreases sharply at the beginning of the epidemic as they become infected.
+The decrease slows down and stabilizes as the number of new infections declines.
+
+- With Vaccination (Dashed Blue Line) - The number of susceptible individuals decreases more gradually, reflecting the impact of vaccination in reducing the number of infections.
+The stabilization occurs at a higher level, indicating that fewer individuals get infected due to the protective effect of vaccination.
+
+**Infected Population**
+
+- Without Vaccination (Solid Red Line) - The number of infected individuals rises rapidly to a peak and then declines as individuals recover.
+The peak is lower and occurs earlier compared to the previous scenario, reflecting a faster spread and recovery cycle.
+
+- With Vaccination (Dashed Orange Line) - The rise in the number of infected individuals is slower, and the peak is significantly lower, indicating the effectiveness of vaccination in controlling the spread of the disease.
+The decline is more gradual, and the overall number of infections remains lower throughout the epidemic.
+
+**Recovered Population**
+
+- Without Vaccination (Solid Green Line) - The number of recovered individuals increases as people recover from the infection.
+The increase slows down and stabilizes as the epidemic wanes.
+
+- With Vaccination (Dashed Green Line) - The number of recovered individuals increases rapidly due to both recovery from infection and the effect of vaccination.
+The stabilization occurs at a higher level, reflecting the increased number of immune individuals.
+
+
+**Conclusion**
+
+- Vaccination Rate - The optimal vaccination rate of 0.00240 is required to halve the total number of infections, and it is effective in significantly reducing the peak and total number of infections.
+
+- Vaccination Impact - 135,431 vaccinations are needed to achieve this reduction, which is fewer than when there's waning immunity.
+
+- Infection Dynamics - The peak number of infections is lower and occurs earlier without vaccination, while the overall severity of the epidemic is reduced significantly with vaccination.
+
+- Population Immunity - Vaccination increases the number of recovered individuals, leading to a higher level of immunity in the population.
+
+- Vaccination has a role in controlling infectious diseases, reducing the burden on healthcare systems, and protecting public health. The optimal vaccination strategy effectively halves the total number of infections, demonstrating its importance in epidemic management.
+
+
+**b.If immunity wanes over time, then we will also need to model transitions from the recovered state back to the susceptible state. Using a new parameter waning_rate, implement this change to the model. You can assume that vaccine immunity and disease immunity last the same amount of time.**
+
+```{r}
+
+library(deSolve)
+
+# Define the SIR model with vaccination and waning immunity
+sir_model_vx_waning <- function(t, y, parms) {
+  with(as.list(c(y, parms)), {
+    dS <- -beta * S * I / N + waning_rate * R - vx_rate * S
+    dI <- beta * S * I / N - gamma * I
+    dR <- gamma * I - waning_rate * R + vx_rate * S
+    list(c(dS, dI, dR))
+  })
+}
+
+# Parameters
+N <- 200000       # Total population
+beta <- 0.035     # Infection rate
+gamma <- 0.009    # Recovery rate
+I0 <- 1000        # Initial number of infected individuals
+R0 <- 0           # Initial number of recovered individuals
+S0 <- N - I0      # Initial number of susceptible individuals
+waning_rate <- 1 / (365 * 1)  # Waning immunity rate
+
+# Time
+times <- seq(0, 10*365, by = 1)  # Time in days
+
+# Initial values
+init <- c(S = S0, I = I0, R = R0)
+parms <- c(beta = beta, gamma = gamma, N = N, vx_rate = 0, waning_rate = waning_rate)
+
+# Function to simulate the model and return the total number of infections
+simulate_sir_vx_waning <- function(vx_rate) {
+  parms["vx_rate"] <- vx_rate
+  out <- ode(y = init, times = times, func = sir_model_vx_waning, parms = parms)
+  out_df <- as.data.frame(out)
+  total_infections <- sum(out_df$I) * diff(times[1:2])  # Approximate total infections
+  return(list(total_infections = total_infections, out_df = out_df))
+}
+
+# Calculate total infections without vaccination
+result_no_vx <- simulate_sir_vx_waning(0)
+total_infections_no_vx <- result_no_vx$total_infections
+out_df_no_vx <- result_no_vx$out_df
+
+# Use a simple search algorithm to find the vaccination rate that halves the infections
+target_infections <- total_infections_no_vx / 2
+
+find_vx_rate <- function() {
+  vx_rate <- 0.0001
+  step <- 0.0001
+  total_infections <- simulate_sir_vx_waning(vx_rate)$total_infections
+  while (total_infections > target_infections) {
+    vx_rate <- vx_rate + step
+    total_infections <- simulate_sir_vx_waning(vx_rate)$total_infections
+  }
+  return(vx_rate)
+}
+
+optimal_vx_rate <- find_vx_rate()
+cat(sprintf("Optimal vaccination rate to halve infections: %.5f\n", optimal_vx_rate))
+
+# Calculate total number of vaccinations needed
+total_vaccinations <- optimal_vx_rate * sum(out_df_no_vx$S) * diff(times[1:2])
+cat(sprintf("Total number of vaccinations needed: %.0f\n", total_vaccinations))
+
+# Run the simulation with the optimal vaccination rate
+result_vx <- simulate_sir_vx_waning(optimal_vx_rate)
+out_df_vx <- result_vx$out_df
+total_infections_vx <- result_vx$total_infections
+
+# Plot results on vaccinated dynamics with waning immunity
+plot(out_df_vx$time, out_df_vx$S, type = 'l', col = 'blue', ylim = c(0, N), xlab = 'Time (days)', ylab = 'Number of People', main = 'SIR Model with Vaccination and Waning Immunity')
+lines(out_df_vx$time, out_df_vx$I, col = 'orange')
+lines(out_df_vx$time, out_df_vx$R, col = 'forestgreen')
+legend("right", legend = c("Susceptible (Vx)", "Infected (Vx)", "Recovered (Vx)"), col = c("blue", "orange", "forestgreen"), lty = 1, cex = 0.5)
+
+# Print results
+cat(sprintf("Peak number of infections without vaccination: %.0f\n", max(out_df_no_vx$I)))
+cat(sprintf("Time of peak infection without vaccination (days): %.0f\n", out_df_no_vx$time[which.max(out_df_no_vx$I)]))
+cat(sprintf("Total number of infections without vaccination: %.0f\n", total_infections_no_vx))
+cat(sprintf("Total number of infections with vaccination: %.0f\n", total_infections_vx))
+
+
+```
+
+**Interpretation**
+
+- Increased Vaccination Rate - The optimal vaccination rate of 0.00400 is higher compared to the lifetime immunity scenario, indicating that more frequent vaccination is necessary to combat the disease effectively due to the loss of immunity over time.
+
+- Higher Vaccination Requirements - The total number of vaccinations needed (832,408) is significantly higher than in the lifetime immunity scenario. This increase reflects the need to compensate for the reduced effectiveness of vaccination over time.
+
+- Reduced Peak Infections - The peak number of infections (83,482) with vaccination is lower than without vaccination, showing that the vaccination strategy helps reduce the peak burden of the disease.
+
+- Total Infections Reduced - The total number of infections with vaccination (64,476,253) is significantly lower than without vaccination (131,545,557), demonstrating the effectiveness of the vaccination campaign despite waning immunity.
+
+- Timing of Peak - The timing of the peak infection remains similar (257 days) with or without vaccination, indicating that the vaccination strategy is more effective in reducing the number of infections rather than shifting the timing of the peak.
+
+**Susceptible Population**
+
+- With waning immunity, those who recover from the disease or are vaccinated may eventually lose their immunity and return to the susceptible category.
+
+**Infected Population**
+
+- This number tends to increase based on the vaccination rate and the rate at which immunity wanes.
+
+**Recovered Population**
+
+- With waning immunity, this grouP also declineS over time as immunity fades, reducing the number of people who are immune.
+
+
+- The plot also reflects the impact of waning immunity, where some recovered individuals transition back to the susceptible state. Despite this, the dashed green line remains higher than the solid green line, emphasizing the importance and effectiveness of vaccination in maintaining a larger immune population.
+
+**Conclusion**
+
+- Vaccination significantly boosts the number of recovered individuals by directly moving susceptible individuals to the recovered state.
+The recovered population with vaccination stabilizes at a higher level, indicating a more robust immunity in the population.
+Waning immunity is accounted for, yet the benefit of vaccination in maintaining a higher number of recovered (and thus immune) individuals is evident.
+
+***3.Report on the relationship between the parameters of your model. To understand them, you will need to try out different values. Pay particular attention to any interesting relationships that you notice between the vaccination rate and the waning rate.***
+
+
+```{r}
+library(deSolve)
+library(ggplot2)
+library(reshape2)
+
+# Define the SIR model with vaccination as an intervention and waning immunity
+sir_model_vx_waning <- function(t, y, parms) {
+  with(as.list(c(y, parms)), {
+    dS <- -beta * S * I / N - vx_rate * S + waning_rate * R
+    dI <- beta * S * I / N - gamma * I
+    dR <- gamma * I + vx_rate * S - waning_rate * R
+    list(c(dS, dI, dR))
+  })
+}
+
+# Parameters
+N <- 200000       # Total population
+beta <- 0.035     # Infection rate
+gamma <- 0.009    # Recovery rate
+I0 <- 1000        # Initial number of infected individuals
+R0 <- 0           # Initial number of recovered individuals
+S0 <- N - I0      # Initial number of susceptible individuals
+
+# Time
+times <- seq(0, 10*365, by = 1)  # Time in days
+
+# Initial values
+init <- c(S = S0, I = I0, R = R0)
+
+# Function to simulate the model and return the total number of infections
+simulate_sir_vx_waning <- function(vx_rate, waning_rate) {
+  parms <- c(beta = beta, gamma = gamma, N = N, vx_rate = vx_rate, waning_rate = waning_rate)
+  out <- ode(y = init, times = times, func = sir_model_vx_waning, parms = parms)
+  out_df <- as.data.frame(out)
+  total_infections <- sum(out_df$I) * diff(times[1:2])  # Approximate total infections
+  peak_infections <- max(out_df$I)
+  peak_time <- out_df$time[which.max(out_df$I)]
+  return(list(total_infections = total_infections, peak_infections = peak_infections, peak_time = peak_time))
+}
+
+# Define ranges for vx_rate and waning_rate
+vx_rates <- seq(0, 0.01, by = 0.002)
+waning_rates <- seq(0, 0.002, by = 0.0005)
+
+# Store results
+results <- data.frame()
+
+# Run simulations for each combination of vx_rate and waning_rate
+for (vx_rate in vx_rates) {
+  for (waning_rate in waning_rates) {
+    sim_result <- simulate_sir_vx_waning(vx_rate, waning_rate)
+    results <- rbind(results, data.frame(vx_rate = vx_rate, waning_rate = waning_rate,
+                                         total_infections = sim_result$total_infections,
+                                         peak_infections = sim_result$peak_infections,
+                                         peak_time = sim_result$peak_time))
+  }
+}
+
+# Plotting the results
+# Melt the results for easier plotting with ggplot2
+results_melt <- melt(results, id.vars = c("vx_rate", "waning_rate"))
+
+# Plot total infections
+ggplot(results_melt[results_melt$variable == "total_infections", ], 
+       aes(x = vx_rate, y = waning_rate, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "red") +
+  labs(title = "Total Infections", x = "Vaccination Rate", y = "Waning Rate")
+
+# Plot peak infections
+ggplot(results_melt[results_melt$variable == "peak_infections", ], 
+       aes(x = vx_rate, y = waning_rate, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Peak Infections", x = "Vaccination Rate", y = "Waning Rate")
+
+# Plot peak time
+ggplot(results_melt[results_melt$variable == "peak_time", ], 
+       aes(x = vx_rate, y = waning_rate, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "forestgreen") +
+  labs(title = "Time to Peak Infections", x = "Vaccination Rate", y = "Waning Rate")
+
+```
+
+**Interpretation**
+
+**Total Infections**
+
+- As the vaccination rate (vx_rate) increases, the total number of infections generally decreases. This relationship is expected because more vaccinations lead to a higher proportion of the population being immune, thus reducing the spread of the disease.
+
+- As the waning rate (waning_rate) increases, the total number of infections tends to increase. This is because immunity wears off faster, leading to a larger susceptible population over time.
+
+**Peak Infections**
+
+- Higher vaccination rates result in lower peak infections. The peak is significantly reduced as more individuals are vaccinated, preventing the rapid spread of the disease.
+
+- Higher waning rates can lead to higher peak infections, as recovered individuals lose their immunity and become susceptible again, contributing to a potential resurgence in infections.
+
+**Time to Peak Infections**
+
+- Increasing the vaccination rate tends to delay the time to peak infections. This delay occurs because the spread of the disease is slowed down due to a higher immune population.
+
+- Higher waning rates may lead to a quicker peak in infections as immunity is lost and susceptible individuals increase more rapidly.
+
+**Conclusion**
+
+- Increasing the vaccination rate consistently reduces both the total number of infections and the peak number of infections while delaying the time to peak infections. This demonstrates the importance of high vaccination coverage in controlling an epidemic.
+
+- Increasing the waning rate has the opposite effect, increasing the total number of infections and peak infections while accelerating the time to peak infections. This highlights the challenge of waning immunity and the need for booster vaccinations or other interventions to maintain immunity levels.
+
+- The interaction between vaccination and waning rates can be complex. While high vaccination rates can mitigate the effects of waning immunity, if the waning rate is too high, it can undermine the benefits of vaccination. There is therefore importance of considering both factors in designing vaccination programs and public health policies.
+
+
+***4.Some researchers are working on a new type of vaccine with longer-lasting immunity. What should their target be for the duration of immunity that would allow for epidemic control?***
+
+```{r}
+library(deSolve)
+library(ggplot2)
+library(reshape2)
+
+# Define the SIR model with vaccination as an intervention and waning immunity
+sir_model_vx_waning <- function(t, y, parms) {
+  with(as.list(c(y, parms)), {
+    dS <- -beta * S * I / N - vx_rate * S + waning_rate * R
+    dI <- beta * S * I / N - gamma * I
+    dR <- gamma * I + vx_rate * S - waning_rate * R
+    list(c(dS, dI, dR))
+  })
+}
+
+# Parameters
+N <- 200000       # Total population
+beta <- 0.035     # Infection rate
+gamma <- 0.009    # Recovery rate
+I0 <- 1000        # Initial number of infected individuals
+R0 <- 0           # Initial number of recovered individuals
+S0 <- N - I0      # Initial number of susceptible individuals
+vx_rate <- 0.002  # Vaccination rate (example value)
+
+# Time
+times <- seq(0, 10*365, by = 1)  # Time in days
+
+# Initial values
+init <- c(S = S0, I = I0, R = R0)
+
+# Function to simulate the model and return key metrics
+simulate_sir_vx_waning <- function(waning_rate) {
+  parms <- c(beta = beta, gamma = gamma, N = N, vx_rate = vx_rate, waning_rate = waning_rate)
+  out <- ode(y = init, times = times, func = sir_model_vx_waning, parms = parms)
+  out_df <- as.data.frame(out)
+  total_infections <- sum(out_df$I) * diff(times[1:2])  # Approximate total infections
+  peak_infections <- max(out_df$I)
+  peak_time <- out_df$time[which.max(out_df$I)]
+  return(list(total_infections = total_infections, peak_infections = peak_infections, peak_time = peak_time))
+}
+
+# Define range for waning_rate
+waning_rates <- seq(0, 0.002, by = 0.0001)
+
+# Store results
+results <- data.frame()
+
+# Run simulations for each waning_rate
+for (waning_rate in waning_rates) {
+  sim_result <- simulate_sir_vx_waning(waning_rate)
+  results <- rbind(results, data.frame(waning_rate = waning_rate,
+                                       total_infections = sim_result$total_infections,
+                                       peak_infections = sim_result$peak_infections,
+                                       peak_time = sim_result$peak_time))
+}
+
+# Plotting the results
+# Melt the results for easier plotting with ggplot2
+results_melt <- melt(results, id.vars = "waning_rate")
+
+# Plot total infections
+ggplot(results_melt[results_melt$variable == "total_infections", ], 
+       aes(x = waning_rate, y = value)) +
+  geom_line() +
+  labs(title = "Total Infections vs Waning Rate", x = "Waning Rate", y = "Total Infections")
+
+# Plot peak infections
+ggplot(results_melt[results_melt$variable == "peak_infections", ], 
+       aes(x = waning_rate, y = value)) +
+  geom_line() +
+  labs(title = "Peak Infections vs Waning Rate", x = "Waning Rate", y = "Peak Infections")
+
+# Determine target waning rate for epidemic control
+target_waning_rate <- results$waning_rate[which.min(results$total_infections > 0.5 * results$total_infections[1])]
+
+# Convert to duration of immunity
+target_duration_immunity <- 1 / target_waning_rate
+
+# Print the target duration of immunity
+cat(sprintf("The target duration of immunity for epidemic control is approximately %.2f years", target_duration_immunity / 365))
+
+```
+
+**Interpretation**
+
+- The first plot illustrates the relationship between the waning rate of immunity and the total number of infections over the course of the epidemic. As the waning rate increases, the total number of infections increases. This is expected because a higher waning rate means that individuals lose their immunity more quickly, leading to more people becoming susceptible again and thus more infections.
+
+- The second plot shows the relationship between the waning rate of immunity and the peak number of infections at any given time during the epidemic. There is an increase in peak infections as the waning rate increases. Higher waning rates result in a higher peak number of infections, indicating more intense outbreaks when immunity wanes quickly.
+
+**Implications**
+
+- Both plots demonstrate that the waning rate has a significant impact on the epidemic's dynamics. Lower waning rates result in fewer total infections and a lower peak of infections, while higher waning rates lead to more infections and a higher peak, indicating that immunity duration is crucial in controlling the spread.
+
+- Achieving epidemic control requires a combination of a high vaccination rate and a low waning rate. If immunity wanes quickly, even high vaccination rates might not be sufficient to control the epidemic effectively.
+
+- The target should be to develop a vaccine that provides immunity for several years. The ideal scenario, as indicated by the model, is lifelong immunity (infinite duration), but practically, immunity lasting for multiple years would really contribute to controlling the epidemic.
+
+- A vaccine with long-lasting immunity reduces the waning rate, thereby decreasing the number of individuals returning to the susceptible state. This reduction directly impacts the total number of infections and the peak number of infections, leading to better epidemic control
+
+- If vaccines cannot provide lifelong immunity, booster shots would be necessary to maintain sufficient immunity levels in the population, especially when the waning rate is high.
+
+- The model suggests that immunity lasting at least several decades can drastically lower the number of infections. Therefore, researchers should aim for vaccines that maintain immunity for many years (10-20 years) to ensure a significant impact on epidemic dynamics.
+
+- If controlling the epidemic with vaccination alone is challenging, other interventions such as social distancing, mask mandates, and quarantine measures should be considered in combination with vaccination.
+
+- In conclusion, policymakers and researchers should focus on developing strategies for long-term epidemic control that include regular booster vaccinations, continuous monitoring of immunity levels, and rapid response plans for new outbreaks to sustain immunity in the population.
+
+
+
+***5.If you assumed that vaccine-derived immunity and infection-derived immunity last the same amount of time, consider how you would remove this assumption.***
+
+
+ 
+
+***6.This project is based on a theoretical disease model. Consider how you would extend this work to a disease of your choosing, to inform vaccination strategies for a real-life example.***
+
+**Example - Influenza**
+
+-**Transmission Rate** - Gather data on the basic reproduction number (\(R_0\)) for influenza, which typically ranges from 1.2 to 1.8, based on factors eg. population density, public transportation usage, and the effectiveness of non-pharmaceutical interventions (e.g., social distancing, mask-wearing).
+
+- **Recovery Rate** - \(\gamma\). For influenza, the infectious period usually lasts about 5-7 days, resulting in a recovery rate of approximately 0.2 per day.
+
+- **Waning Immunity** - Research indicates that immunity from the influenza vaccine wanes over time, generally lasting about 6-12 months. This can be modeled with a waning rate (\(\omega_v\)).
+
+- **Post-Infection** - Immunity after natural infection also wanes, though potentially lasting longer than vaccine-derived immunity. This waning rate (\(\omega_i\)) might be slightly lower than \(\omega_v\).
+
+- **Initial Conditions** - Gather data on the number of influenza cases at the beginning of the influenza season. This includes initial numbers of susceptible (\(S_0\)), infected (\(I_0\)), and recovered (\(R_0\)) individuals. Consider population demographics and pre-existing immunity levels in the population.
+
+- **Model Calibration** - Fit the model parameters using historical data from past influenza seasons. This involves adjusting parameters like the transmission rate (\(\beta\)), recovery rate (\(\gamma\)), and waning rates (\(\omega_v\), \(\omega_i\)) to match observed infection curves.
+
+- **Scenario Simulations** - Simulate the impact of increasing vaccination coverage from current levels (e.g., 10%) to higher levels (e.g., 70%, 80%). Assess how higher coverage reduces the peak and total number of infections.
+
+- Model the introduction of a universal influenza vaccine that provides longer-lasting immunity. Evaluate different durations of immunity (e.g., 2 years, 5 years) and their impact on influenza dynamics.
+
+- Simulate the impact of introducing booster doses mid-season, particularly for high-risk populations.
+
+**Vaccination Strategies**
+
+- **Increase Vaccination Coverage**
+
+ - Prioritize vaccination for high-risk groups such as the elderly, young children, pregnant women, and individuals with chronic health conditions.
+
+- Enhance public awareness campaigns to increase overall vaccination uptake. Utilize social media, community centers, and healthcare providers to disseminate information.
+
+- Implement vaccination programs in schools to increase coverage among children, who are key drivers of influenza transmission.
+ 
+- **Optimize Vaccination Timing**
+
+- Encourage vaccination before the start of the influenza season to ensure immunity is at its peak during the period of highest transmission.
+
+- **Booster Doses**
+
+- Recommend annual vaccination for everyone, as immunity from the influenza vaccine typically wanes over time and the virus evolves rapidly.
+
+- Depending on emerging data, consider mid-season booster doses for high-risk groups to maintain protective immunity throughout the influenza season.
+
+- Ensure vaccines are available in a variety of settings, including social places like markets, workplaces, schools, and community health clinics.
+
+**Community Involvement**
+
+- Involve community leaders eg. chiefs to promote vaccination within their communities. Develop culturally tailored messages that resonate with diverse populations to increase acceptance and uptake of the influenza vaccine.
+
+**Real-Time Surveillance**
+
+- Establish mechanisms to collect data on vaccine uptake and outcomes, and use this information to refine future vaccination strategies.
+
+- Conduct post-season evaluations to assess the effectiveness of vaccination strategies and identify areas for improvement.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

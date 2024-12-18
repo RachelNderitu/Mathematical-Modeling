@@ -1,0 +1,58 @@
+---
+title: "Readme - SEIRHD Model"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+***Summary of the SEIRHD Model Project***
+
+**Objective**
+
+This project models the spread of an infectious disease using the SEIRHD (Susceptible, Exposed, Infected, Recovered, Hospitalized, Dead) framework, incorporating vaccination strategies to understand epidemic dynamics, hospitalization, and mortality rates. It evaluates interventions like varying vaccination rates and healthcare capacity to inform public health policies.
+
+***Key Components***
+
+**1. Schematic Framework**
+
+Represents compartments (states) for children and adults:
+Susceptible (S) → Exposed (E) → Infected (I) → Recovered (R) → Hospitalized (H) → Dead (D).
+Transition rates for infection (λ), progression (σ), recovery (γ), and death (μ) are parameterized.
+Interaction between age groups considers:
+Children: 30% of the population, 20 daily contacts (12 with other children).
+Adults: 70% of the population, 20 daily contacts (15 with other adults).
+
+**2. Epidemic Simulation**
+
+Parameters:
+Contact rate: 20, Transmission probability: 0.07, Latency period: 21 days, Infectious period: 12 days.
+Initial values: 20,989 susceptible, 15,000 exposed, 11 infected, 0 recovered, 0 dead.
+Findings:
+Susceptible individuals decline as exposed and infected individuals rise.
+Peaks in exposed and infected populations are followed by increases in recovered and deceased.
+Separate trajectories for children and adults reveal age-specific infection dynamics.
+
+**3. Impact of Vaccination**
+
+Simulations were performed for vaccination rates of 10%, 20%, 30%, and 50%, assuming 100% vaccine efficacy:
+Higher vaccination rates significantly reduce the susceptible population, slowing the epidemic's spread.
+Lower infection and mortality rates are observed as vaccination coverage increases.
+Differences in age groups reflect varied transmission and recovery rates.
+
+**4. Key Insights**
+
+- Epidemic Dynamics - Vaccination reduces the number of infections and delays the epidemic peak.
+At higher vaccination rates, the disease fails to spread due to herd immunity, preventing large outbreaks.
+
+- Hospitalization Rates - Fewer infections result in reduced severe cases requiring hospitalization.
+Lower burden on healthcare systems improves resource availability and outcomes.
+Mortality Rates:
+
+- Direct reduction in mortality due to vaccine protection.
+Indirect reduction by lowering the severity and preventing healthcare system overload.
+Public Health Impact:
+
+- High vaccination coverage enhances epidemic control, reduces economic costs, and supports long-term public health sustainability.
+
+**Conclusions**
+
+This project highlights the importance of vaccination in managing infectious diseases. By integrating vaccination rates, hospitalization capacity, and age-specific dynamics, the SEIRHD model provides valuable insights into epidemic progression, the effectiveness of interventions, and strategies to reduce healthcare burden and mortality. These findings emphasize vaccination as a critical tool in epidemic preparedness and response.

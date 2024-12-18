@@ -1,0 +1,427 @@
+---
+title: "SEIRHD Model"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Given Information:
+Parameters of Interest: Contact rate (20), Transmission probability (0.07), Infectiousness
+period (12), latency period (21)
+Disease Dynamic Parameters and Initial Values: Exposed (15,000), Susceptible (20,989),
+Infected (11), Recovered (0), Dead (0)
+States: Susceptible, Exposed, Infected, Recovered, Hospitalized, Dead
+Time Period for Monitoring: 180 days
+TASK:
+1. Present the Schematic Framework illustrate the compartments and interactions between
+age-groups. Remember that susceptible children experience the force of infection, while
+susceptible adults become infected at a constant rate. For this case assume that:
+− Children are 30% of the entire population
+− Children make 20 contacts per day on average, with 12 contacts being with other children.
+− Adults make 20 contacts per day on average, with 15 contacts being with other adults.
+[5 marks]
+
+
+
+```{r}
+
+library(DiagrammeR)
+
+# Define the schematic framework
+diagram <- grViz("
+digraph SEIRHD {
+  
+  # Node definitions
+  node [shape = rectangle, style = filled, fillcolor = yellow]
+  
+  Sc [label = 'Susceptible Children']
+  Ec [label = 'Exposed Children']
+  Ic [label = 'Infected Children']
+  Rc [label = 'Recovered Children']
+  Hc [label = 'Hospitalized Children']
+  Dc [label = 'Dead Children']
+  
+  Sa [label = 'Susceptible Adults']
+  Ea [label = 'Exposed Adults']
+  Ia [label = 'Infected Adults']
+  Ra [label = 'Recovered Adults']
+  Ha [label = 'Hospitalized Adults']
+  Da [label = 'Dead Adults']
+  
+  # Define the edges between nodes
+  edge [color = black, arrowhead = vee]
+  
+  # Edges for children
+  Sc -> Ec [label = 'λ = β × (I / N) × c']
+  Ec -> Ic [label = 'σ = 1 / Latency Period']
+  Ic -> Rc [label = 'γ = 1 / Infectious Period']
+  Ic -> Dc [label = 'μ = Proportion of Infected Who Die']
+  Ic -> Hc [label = 'Hospitalization']
+  Hc -> Rc [label = 'Recovery']
+  Hc -> Dc [label = 'Death']
+  
+  # Edges for adults
+  Sa -> Ea [label = 'λ = β × (I / N) × c']
+  Ea -> Ia [label = 'σ = 1 / Latency Period']
+  Ia -> Ra [label = 'γ = 1 / Infectious Period']
+  Ia -> Da [label = 'μ = Proportion of Infected Who Die']
+  Ia -> Ha [label = 'Hospitalization']
+  Ha -> Ra [label = 'Recovery']
+  Ha -> Da [label = 'Death']
+  
+  # Define interactions between children and adults
+  Ic -> Sa [label = 'Transmission to adults']
+  Ia -> Sc [label = 'Transmission to children']
+  
+  # Define interactions within age groups
+  Ic -> Sc [label = 'Transmission within children']
+  Ia -> Sa [label = 'Transmission within adults']
+}
+")
+
+diagram
+
+```
+
+
+Nodes are defined for children and adults representing different states in an SEIRHD model:
+Susceptible (Sc, Sa)
+Exposed (Ec, Ea)
+Infected (Ic, Ia)
+Recovered (Rc, Ra)
+Hospitalized (Hc, Ha)
+Dead (Dc, Da)
+
+Edges represent transitions between states for both children and adults, labeled with parameters for infection and progression:
+Infection (λ): Transition from Susceptible to Exposed (Sc -> Ec and Sa -> Ea).
+Progression (σ): Transition from Exposed to Infected (Ec -> Ic and Ea -> Ia).
+Recovery (γ): Transition from Infected to Recovered (Ic -> Rc and Ia -> Ra).
+Death (μ): Transition from Infected to Dead (Ic -> Dc and Ia -> Da).
+Hospitalization: Transition from Infected to Hospitalized (Ic -> Hc and Ia -> Ha).
+Recovery from Hospitalization: Transition from Hospitalized to Recovered (Hc -> Rc and Ha -> Ra).
+Death in Hospitalization: Transition from Hospitalized to Dead (Hc -> Dc and Ha -> Da).
+
+
+1. Infection (λ) - The rate at which susceptible individuals become exposed due to contact with infected individuals.
+  
+  Children - Susceptible Children (Sc) -> Exposed Children (Ec).
+  Adults - Susceptible Adults (Sa) -> Exposed Adults (Ea).
+  Formula -  lambda = beta * (I / N)*c, where:
+     - beta is the transmission rate.
+     - I is the number of infected individuals.
+     - N is the total population.
+     - c is the contact rate.
+
+2. Progression (σ) - The rate at which exposed individuals progress to the infected state.
+
+  Children - Exposed Children (Ec) -> Infected Children (Ic).
+  Adults - Exposed Adults (Ea) -> Infected Adults (Ia).
+  Formula - sigma = 1 /{Latency Period}, where the latency period is the time between exposure and becoming     infectious.
+
+3. Recovery (γ) - The rate at which infected individuals recover and become immune.
+   
+  Children - Infected Children (Ic) -> Recovered Children (Rc).
+  Adults - Infected Adults (Ia) -> Recovered Adults (Ra).
+  Formula - gamma = 1 /{Infectious Period}, where the infectious period is the time during which an individual can transmit the disease to others.
+
+4. Death (μ) - The rate at which infected individuals die from the disease.
+  
+  Children - Infected Children (Ic) -> Dead Children (Dc).
+  Adults -Infected Adults (Ia) -> Dead Adults (Da).
+  Formula - mu ={Proportion of Infected Who Die}.
+
+5.Hospitalization - The rate at which infected individuals are hospitalized.
+  
+  Children - Infected Children (Ic) -> Hospitalized Children (Hc).
+  Adults -Infected Adults (Ia) -> Hospitalized Adults (Ha).
+
+6. Recovery from Hospitalization - The rate at which hospitalized individuals recover.
+
+ Children - Hospitalized Children (Hc) -> Recovered Children (Rc).
+ Adult - Hospitalized Adults (Ha) -> Recovered Adults (Ra).
+   
+7. Death in Hospitalization - The rate at which hospitalized individuals die from the disease.
+
+ Children - Hospitalized Children (Hc) -> Dead Children (Dc).
+ Adults - Hospitalized Adults (Ha) -> Dead Adults (Da).
+
+
+2. ***Simulate the SEIRD Epidemic based on the provided parameters and initial values***
+
+In this code, we have multiple lines representing different compartments (Susceptible, Exposed, Infected, Recovered, Dead) for both children and adults.
+
+Susceptible - Initially high, gradually decreasing as individuals become exposed and infected.
+Exposed - Peaks early as individuals transition from susceptible to exposed, then declines as they move to other compartments.
+Infected - Peaks after exposed, then declines as individuals recover or die.
+Recovered - Increases steadily over time as infected individuals recover.
+Dead - Starts from zero and increases gradually based on mortality rates among infected and hospitalized individuals.
+
+The plot visually demonstrates how the epidemic progresses over time. It shows the impact of interventions like hospitalization on reducing mortality.
+Differences in trajectories between children and adults may indicate varying infection and recovery rates, reflecting age-specific dynamics.
+It also provides insights into the effectiveness of interventions and policies in controlling the epidemic.
+
+***Bed capacity***
+
+Sufficient bed capacity guarantees that patients with severe conditions can get the right medical attention, such as oxygen therapy, critical care, and ventilator support as needed.
+When there are not enough beds available, patients may experience treatment setbacks, a rise in morbidity (disease-related consequences), and a rise in mortality—particularly in severe cases requiring critical care.
+
+High patient numbers can put a strain on healthcare professionals, affecting their ability to provide high-quality care and perhaps resulting in burnout.
+
+Government policies and investments in healthcare infrastructure, including bed capacity expansion, are crucial for enhancing epidemic preparedness and response capabilities.
+
+```{r}
+# Load required libraries
+library(deSolve)
+library(ggplot2)
+
+# Define SEIRD model equations incorporating age-group-specific contact rates
+seird_model <- function(time, variables, parameters) {
+  with(as.list(c(variables, parameters)), {
+    N_children <- S_children + E_children + I_children + R_children + D_children
+    N_adults <- S_adults + E_adults + I_adults + R_adults + D_adults
+    
+    lambda_children <- beta * I_children / N_children
+    lambda_adults <- beta * I_adults / N_adults
+    
+    newE_children <- lambda_children * S_children
+    newE_adults <- lambda_adults * S_adults
+    
+    newI_children <- alpha * E_children
+    newI_adults <- alpha * E_adults
+    
+    newR_children <- gamma * I_children
+    newR_adults <- gamma * I_adults
+    
+    newD_inf_children <- delta * I_children
+    newD_inf_adults <- delta * I_adults
+    
+    # Hospitalization rates based on bed capacity scenario
+    if (hospital_beds == "unlimited") {
+      newD_hosp_children <- hosp_rate * I_children * crit_illness_mort_rate
+      newD_hosp_adults <- hosp_rate * I_adults * crit_illness_mort_rate
+    } else {
+      # Limited bed capacity scenario
+      max_hosp_children <- min(hosp_capacity_children, I_children)
+      max_hosp_adults <- min(hosp_capacity_adults, I_adults)
+      
+      newD_hosp_children <- hosp_rate * max_hosp_children * crit_illness_mort_rate
+      newD_hosp_adults <- hosp_rate * max_hosp_adults * crit_illness_mort_rate
+    }
+    
+    # Differential equations for children
+    dS_children <- -newE_children
+    dE_children <- newE_children - newI_children
+    dI_children <- newI_children - newR_children - newD_inf_children - newD_hosp_children
+    dR_children <- newR_children
+    dD_children <- newD_inf_children + newD_hosp_children
+    
+    # Differential equations for adults
+    dS_adults <- -newE_adults
+    dE_adults <- newE_adults - newI_adults
+    dI_adults <- newI_adults - newR_adults - newD_inf_adults - newD_hosp_adults
+    dR_adults <- newR_adults
+    dD_adults <- newD_inf_adults + newD_hosp_adults
+    
+    return(list(c(dS_children, dE_children, dI_children, dR_children, dD_children,
+                  dS_adults, dE_adults, dI_adults, dR_adults, dD_adults)))
+  })
+}
+
+# Parameters and initial values for children and adults
+parameters <- list(beta = 20, alpha = 1/21, gamma = 1/12, delta = 0.01,
+                   hosp_rate = 0.05, crit_illness_mort_rate = 0.3,
+                   hosp_capacity_children = 1000, hosp_capacity_adults = 2000,
+                   hospital_beds = "limited")  # Change to "unlimited" for unlimited scenario
+
+initial_values <- list(S_children = 6296.7, E_children = 4500, I_children = 3.3, R_children = 0, D_children = 0,
+                      S_adults = 14692.3, E_adults = 10500, I_adults = 7.7, R_adults = 0, D_adults = 0)
+
+# Time period for monitoring: 180 days
+times <- seq(0, 180)
+
+# Solve differential equations using ode function from deSolve package
+output <- ode(y = unlist(initial_values),
+              times = times,
+              func = seird_model,
+              parms = parameters)
+
+# Convert output to data frame for plotting
+output_df <- as.data.frame(output)
+output_df$time <- times  # Add time column for plotting
+
+# Plotting function to create SEIRD trajectories plot for children and adults
+plot_seird_trajectories <- function(output_df) {
+  ggplot(data = output_df) +
+    geom_line(aes(x = time, y = S_children, colour = "Susceptible Children")) +
+    geom_line(aes(x = time, y = E_children, colour = "Exposed Children")) +
+    geom_line(aes(x = time, y = I_children, colour = "Infected Children")) +
+    geom_line(aes(x = time, y = R_children, colour = "Recovered Children")) +
+    geom_line(aes(x = time, y = D_children, colour = "Dead Children")) +
+    geom_line(aes(x = time, y = S_adults, colour = "Susceptible Adults")) +
+    geom_line(aes(x = time, y = E_adults, colour = "Exposed Adults")) +
+    geom_line(aes(x = time, y = I_adults, colour = "Infected Adults")) +
+    geom_line(aes(x = time, y = R_adults, colour = "Recovered Adults")) +
+    geom_line(aes(x = time, y = D_adults, colour = "Dead Adults")) +
+    labs(title = "SEIRD Model over 180 Days for Children and Adults",
+         x = "Time (days)", y = "Number of people") +
+    scale_colour_manual(values = c("Susceptible Children" = "blue", "Exposed Children" = "navy",
+                                   "Infected Children" = "red", "Recovered Children" = "green", "Dead Children" = "black",
+                                   "Susceptible Adults" = "lightblue", "Exposed Adults" = "orange",
+                                   "Infected Adults" = "darkred", "Recovered Adults" = "lightgreen", "Dead Adults" = "brown"))
+}
+
+
+plot_seird_trajectories(output_df)
+
+```
+
+3. Evaluate and Discuss Changes with Vaccination assuming a vaccine with 100%
+effectiveness against acquiring infections and analyze its impact on sub-populations.
+− Introduce vaccination into the model, varying vaccination percentages (10%, 20%, 30%,
+50%).
+
+```{r}
+
+library(deSolve)
+library(ggplot2)
+
+# Define the SEIRD model equations incorporating vaccination
+seird_model_vaccine <- function(time, variables, parameters) {
+  with(as.list(c(variables, parameters)), {
+    N_children <- S_children + E_children + I_children + R_children + D_children
+    N_adults <- S_adults + E_adults + I_adults + R_adults + D_adults
+    
+    lambda_children <- beta * I_children / N_children
+    lambda_adults <- beta * I_adults / N_adults
+    
+    newE_children <- lambda_children * S_children
+    newE_adults <- lambda_adults * S_adults
+    
+    newI_children <- alpha * E_children
+    newI_adults <- alpha * E_adults
+    
+    newR_children <- gamma * I_children
+    newR_adults <- gamma * I_adults
+    
+    newD_inf_children <- delta * I_children
+    newD_inf_adults <- delta * I_adults
+    
+    newD_hosp_children <- hosp_rate * I_children * crit_illness_mort_rate
+    newD_hosp_adults <- hosp_rate * I_adults * crit_illness_mort_rate
+    
+    # Differential equations for children
+    dS_children <- -newE_children - vacc_rate_children * S_children
+    dE_children <- newE_children - newI_children
+    dI_children <- newI_children - newR_children - newD_inf_children - newD_hosp_children
+    dR_children <- newR_children + vacc_rate_children * S_children
+    dD_children <- newD_inf_children + newD_hosp_children
+    
+    # Differential equations for adults
+    dS_adults <- -newE_adults - vacc_rate_adults * S_adults
+    dE_adults <- newE_adults - newI_adults
+    dI_adults <- newI_adults - newR_adults - newD_inf_adults - newD_hosp_adults
+    dR_adults <- newR_adults + vacc_rate_adults * S_adults
+    dD_adults <- newD_inf_adults + newD_hosp_adults
+    
+    return(list(c(dS_children, dE_children, dI_children, dR_children, dD_children,
+                  dS_adults, dE_adults, dI_adults, dR_adults, dD_adults)))
+  })
+}
+
+# Function to run the model and plot results
+run_simulation <- function(vacc_rate_children, vacc_rate_adults) {
+  parameters <- c(beta = 20, alpha = 1/21, gamma = 1/12, delta = 0.01,
+                  hosp_rate = 0.05, crit_illness_mort_rate = 0.3,
+                  vacc_rate_children = vacc_rate_children, vacc_rate_adults = vacc_rate_adults)
+  
+  initial_values <- c(S_children = 6296.7, E_children = 4500, I_children = 3.3, R_children = 0, D_children = 0,
+                      S_adults = 14692.3, E_adults = 10500, I_adults = 7.7, R_adults = 0, D_adults = 0)
+  
+  times <- seq(0, 180) # Time period for monitoring: 180 days
+  
+  # Solve differential equations using ode function from deSolve package
+  output <- ode(y = initial_values,
+                times = times,
+                func = seird_model_vaccine,
+                parms = parameters)
+  
+  # Convert output to data frame for plotting
+  output_df <- as.data.frame(output)
+  
+  # Plotting function to create SEIRD trajectories plot for children and adults
+  ggplot(data = output_df) +
+    geom_line(aes(x = time, y = S_children, colour = "Susceptible Children")) +
+    geom_line(aes(x = time, y = E_children, colour = "Exposed Children")) +
+    geom_line(aes(x = time, y = I_children, colour ="Infected Children")) +
+    geom_line(aes(x = time, y = R_children, colour ="Recovered Children")) +
+    geom_line(aes(x = time, y = D_children, colour ="Dead Children")) +
+    geom_line(aes(x = time, y = S_adults, colour = "Susceptible Adults")) +
+    geom_line(aes(x = time, y = E_adults, colour = "Exposed Adults")) +
+    geom_line(aes(x = time, y = I_adults, colour ="Infected Adults")) +
+    geom_line(aes(x = time, y = R_adults, colour ="Recovered Adults")) +
+    geom_line(aes(x = time, y = D_adults, colour ="Dead Adults")) +
+    
+    labs(title=paste("SEIRD Model with Vaccination Rate", vacc_rate_children * 100, "% for Children and", vacc_rate_adults * 100, "% for Adults"),
+         x="Time (days)", y="Number of people") +
+    scale_colour_manual(values=c("Susceptible Children"="blue", "Exposed Children"="yellow",
+                                 "Infected Children"="red", "Recovered Children"="green",
+                                 "Dead Children"="black", "Susceptible Adults"="lightblue",
+                                 "Exposed Adults"="orange", "Infected Adults"="darkred",
+                                 "Recovered Adults"="lightgreen", "Dead Adults"="brown"))
+}
+
+# Run the model for different vaccination rates
+vacc_rates <- c(0.1, 0.2, 0.3, 0.5)
+plots <- list()
+
+for (rate in vacc_rates) {
+  plots[[paste(rate * 100, "%")]] <- run_simulation(rate, rate)
+}
+
+# Display plots
+for (rate in names(plots)) {
+  print(plots[[rate]])
+}
+
+```
+This setup allows us to visualize how different vaccination rates impact the spread and outcomes of the epidemic in both children and adults, facilitating comparisons across various scenarios.
+The plots show how higher vaccination rates reduce the number of susceptible individuals, thus slowing down the spread of the disease.
+The effect on reducing the number of infections (Infected) and deaths (Dead) as vaccination coverage increases.
+They also show differences in the trajectories between children and adults, reflecting age-specific transmission dynamics and vaccination responses.
+
+The outputs provide insights into the potential impact of vaccination as an intervention strategy, highlighting its role in mitigating the severity and duration of an epidemic in different age groups. Adjustments in vaccination rates can significantly alter these dynamics, underscoring the importance of vaccination campaigns in public health planning and response strategies.
+
+In the context of infectious diseases modeled using SEIRD (Susceptible, Exposed, Infected, Recovered, Dead) frameworks, varying vaccination rates are critical in determining epidemic dynamics, hospitalization rates, and mortality rates. This is a thorough explanation of how different vaccination rates affect these factors:
+
+**Discuss how different vaccination rates influence the epidemic dynamics, hospitalization
+rates, and mortality rates.**
+
+
+1.As a result of increased vaccination rates, a greater percentage of the population develops immunity (by natural infection or vaccination-induced immunity), which lowers the number of vulnerable people. This stops the disease's initial spread and, as a result, slows down the population's ability to contract it.
+
+2.In the SEIRD model, the number of cases of infection decreases as vaccination rates rise. As a result, the peak number of infections during the pandemic is decreased.
+
+3.When a high enough vaccination rate is attained, the disease can no longer spread as much because there aren't as many vulnerable people left to support the epidemic.
+
+***Rates of Hospitalization***
+
+1.Immunization lowers the total number of infections and, in turn, lowers the quantity of hospital-related severe cases. This lessens the likelihood that outbreaks may overwhelm healthcare systems.
+
+2.The burden on hospitals and intensive care units (ICUs) is lessened when there are fewer severe cases. This may free up funds for the treatment of crises and other illnesses.
+
+***Death rates***
+
+1.Vaccination lowers disease-related death rates directly. When compared to unvaccinated individuals, vaccinated individuals who nonetheless get the infection are more likely to have milder symptoms, lower severity, and lower death.
+
+2.Vaccination indirectly lowers disease-related mortality rates by lowering overall infection rates and severity. This involves lowering the number of people who pass away from consequences associated with serious disease and underlying medical issues made worse by the infection.
+
+***Impact on Public Health***
+
+1.High vaccination rates prevent epidemics before they start and also contribute to long-term control by lowering the population's reservoir of vulnerable individuals.
+
+2.By lowering healthcare expenses and productivity losses, successful immunization programs can have a significant positive impact on the economy.
+
+
+
+
+

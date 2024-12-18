@@ -1,0 +1,564 @@
+---
+title: "SEIRD model"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+**Model Definition and Formulation (25 points)**
+
+***1. Define the compartments in the SEIRD model and explain the significance of each.***
+
+a) Susceptible (S) - This compartment includes individuals who are not infected with the disease but are at risk of becoming infected. 
+Significance - Understanding the number of susceptible individuals helps in predicting the potential spread of the disease and planning preventive measures.
+
+b) Exposed (E) - This compartment consists of individuals who have been exposed to the disease and are in the incubation period. They are infected but not yet infectious.
+Significance - This compartment helps in understanding the latency period of the disease. This helps in estimating the time delay before infected individuals become infectious and start spreading the disease.
+
+c) Infected (I) - This compartment includes individuals who are currently infected and can transmit the disease to susceptible individuals. These individuals show symptoms and are contagious.
+Significance - The number of infected individuals is critical for assessing the current burden of the disease on the population and the healthcare system. It also helps in evaluating the effectiveness of interventions aimed at reducing transmission.
+
+d) Recovered (R) - This compartment consists of individuals who have recovered from the disease and have gained immunity. These individuals are no longer susceptible to the disease.
+Significance - Helps in understanding the progression of the epidemic and the development of herd immunity within the population.
+
+d) Dead (D) - This compartment includes individuals who have died due to the disease.
+Significance - Helps to understand the severity and fatality rate of the disease, which is essential for public health planning and resource allocation.
+
+
+
+***2. Write down the differential equations governing the SEIRD model.***
+
+1. **Susceptible (S)**
+   \[
+   \frac{dS}{dt} = -\beta \frac{S I}{N}
+   \]
+   Here, \(\beta\) is the transmission rate, \(I\) is the number of infected individuals, and \(N = S + E + I + R + D\) is the total population.
+
+2. **Exposed (E)**
+   \[
+   \frac{dE}{dt} = \beta \frac{S I}{N} - \sigma E
+   \]
+   Here, \(\sigma\) is the rate at which exposed individuals become infectious (the inverse of the incubation period).
+
+3. **Infected (I)**
+   \[
+   \frac{dI}{dt} = \sigma E - \gamma I - \mu I
+   \]
+   Here, \(\gamma\) is the recovery rate, and \(\mu\) is the mortality rate due to the disease.
+
+4. **Recovered (R)**
+   \[
+   \frac{dR}{dt} = \gamma I
+   \]
+   Individuals in the infected compartment move to the recovered compartment at a rate \(\gamma\).
+
+5. **Dead (D)**
+   \[
+   \frac{dD}{dt} = \mu I
+   \]
+   Individuals in the infected compartment move to the dead compartment at a rate \(\mu\).
+
+These equations describe the transitions between the compartments over time, based on the specified parameters and the current state of the population.
+
+
+***3. Explain the meaning of the parameters 𝛽 (transmission rate), 𝜎 (rate of moving from exposed to infected), 𝛾 (recovery rate), and 𝜇 (mortality rate).***
+
+a) Transmission rate (𝛽) - The rate at which susceptible individuals come into contact with infected individuals and become exposed to the disease. It quantifies how easily the disease is transmitted from an infected person to a susceptible person.
+A higher 𝛽 indicates a more contagious disease, leading to a faster spread within the population. Control measures such as social distancing, wearing masks, and vaccination can effectively reduce 𝛽.
+
+b) Rate of moving from exposed to infected (𝜎) - The rate at which exposed individuals progress to the infected stage, becoming infectious themselves. It is the inverse of the average incubation period (1/𝜎).
+This parameter helps determine the delay between exposure to the pathogen and the onset of infectiousness. A higher 𝜎 means a shorter incubation period, leading to a quicker appearance of symptoms and infectiousness.
+
+c) Recovery rate (𝛾) - The rate at which infected individuals recover from the disease and move to the recovered compartment. It is the inverse of the average duration of the infectious period (1/𝛾).
+A higher 𝛾 indicates a shorter infectious period, which can reduce the time an individual can spread the disease. This parameter is important for understanding the duration of infection and the development of immunity.
+d) Mortality rate (𝜇) - The rate at which infected individuals die from the disease. It represents the proportion of the infected population that succumbs to the disease over time.
+The mortality rate provides insight into the severity of the disease. A higher 𝜇 indicates a more deadly disease. Understanding this helps in assessing the public health impact and planning medical resources and interventions.
+
+
+***4. State the initial conditions for the model, assuming a closed population of 1000 individuals with 10 initial infectious individuals, 20 exposed individuals, and the rest susceptible.***
+
+We can calculate the initial number of susceptible individuals as;
+\[
+S(0) = N - E(0) - I(0) = 1000 - 20 - 10 = 970
+\]
+
+Therefore, the initial conditions are:
+\[
+S(0) = 970, \quad E(0) = 20, \quad I(0) = 10, \quad R(0) = 0, \quad D(0) = 0
+\]
+
+
+***5. Justify your choices of parameters based on typical values for similar diseases.***
+
+I have used COVID-19 for a similar disease.
+
+
+**Parameter Justification (based on COVID-19)**
+
+1. **Transmission rate (\(\beta\))**
+COVID-19 has a reproduction number (\(R_0\)) estimated around 2 to 3. Considering an infectious period of approximately 7 to 10 days, we estimate \(\beta\) using \(R_0\) and the duration of infectiousness
+     \[
+     \beta \approx \frac{R_0}{\text{duration of infectious period}} = \frac{2.5}{7} \approx 0.357 \text{ per day}
+     \]
+
+2. **Rate of moving from exposed to infected (\(\sigma\))**
+The incubation period for COVID-19 is typically around 5 to 7 days. Hence, \(\sigma\) can be estimated as
+     \[
+     \sigma = \frac{1}{\text{incubation period}} = \frac{1}{5} = 0.2 \text{ per day}
+     \]
+
+3. **Recovery rate (\(\gamma\))**
+The average recovery period for COVID-19 varies but is often around 10 to 14 days. Therefore, \(\gamma\) can be estimated as
+     \[
+     \gamma = \frac{1}{\text{average recovery period}} = \frac{1}{10} = 0.1 \text{ per day}
+     \]
+
+4. **Mortality rate (\(\mu\))**
+COVID-19 mortality rates vary widely depending on factors such as age and underlying health conditions. For estimation purposes, a mortality rate of around 0.5% to 1% is often used. This translates to
+     \[
+     \mu = \text{mortality rate} \times \gamma = 0.005 \times 0.1 = 0.0005 \text{ per day}
+     \]
+
+Therefore, the initial conditions and parameter choices are:
+- \(S(0) = 970\)
+- \(E(0) = 20\)
+- \(I(0) = 10\)
+- \(R(0) = 0\)
+- \(D(0) = 0\)
+
+Parameters
+- \(\beta = 0.357 \text{ per day}\)
+- \(\sigma = 0.2 \text{ per day}\)
+- \(\gamma = 0.1 \text{ per day}\)
+- \(\mu = 0.005 \text{ per day}\)
+
+
+**Numerical Simulation (30 points)**
+***1. Implement a numerical method to solve the system of differential equations. Provide the code used for the simulation.***
+***2. Plot the number of susceptible, exposed, infected, recovered, and dead individuals over time. Label the axes and include a legend.***
+***3. Identify and interpret the critical points in your plots (e.g., peak of the infection, time when the number of exposed individuals starts to decline).***
+
+```{r}
+
+library(deSolve)
+library(ggplot2)
+
+# Parameters
+beta <- 0.357   # transmission rate per day
+sigma <- 0.2    # rate of moving from exposed to infected per day
+gamma <- 0.1    # recovery rate per day
+mu <- 0.005    # mortality rate per day
+
+# Total population
+N <- 1000
+
+# Initial conditions
+initial_state <- c(S = 970, E = 20, I = 10, R = 0, D = 0)
+
+# Time vector (days)
+times <- seq(0, 180, by = 1)  # simulate for 180 days
+
+# SEIRD model function
+seird_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / N
+    dE <- beta * S * I / N - sigma * E
+    dI <- sigma * E - (gamma + mu) * I
+    dR <- gamma * I
+    dD <- mu * I
+    return(list(c(dS, dE, dI, dR, dD)))
+  })
+}
+
+# Solve the SEIRD equations
+output <- ode(y = initial_state, times = times, func = seird_model, parms = list(beta = beta, sigma = sigma, gamma = gamma, mu = mu))
+
+# Convert output to data frame for plotting
+output_df1 <- as.data.frame(output)
+
+# Plotting the results
+plot1 = ggplot(output_df1, aes(x = time)) +
+  geom_line(aes(y = S, color = "Susceptible"), size = 1) +
+  geom_line(aes(y = E, color = "Exposed"), size = 1) +
+  geom_line(aes(y = I, color = "Infected"), size = 1) +
+  geom_line(aes(y = R, color = "Recovered"), size = 1) +
+  geom_line(aes(y = D, color = "Dead"), size = 1) +
+  labs(x = "Time (days)", y = "Population", color = "Compartment") +
+  scale_color_manual(values = c("Susceptible" = "blue", "Exposed" = "orange", "Infected" = "red", "Recovered" = "green", "Dead" = "black")) +
+  theme_minimal()
+
+plot1
+
+```
+
+The resulting plot shows the population dynamics over time for each compartment in the SEIRD model.
+Each line represents the change in population size of each compartment over the simulated 180 days.
+The curve for Susceptible individuals generally decreases, after the introduction of infection. It decreases and starts to plateau from about day 50.
+The Exposed curve increases as new individuals become exposed to the virus and then declines as they progress to the infected state. It peaks at about day 30 and then decreases and plateaus from about day 75.
+The Infected curve shows a sharp rise, reaching a peak at about day 40, and then declines as the infected individuals recover or succumb to the disease.It plateaus from about day 90.
+The Recovered curve starts to rise after the Infected individuals begin to recover, usually lagging behind the peak of the Infected curve.It peaks at about day 75, and plateaus thereafter.
+The Dead curve will show a slower increase, peaks at about day 75 (about 50 people) and plateaus thereafter.
+
+
+**Analysis of Results (25 points)**
+***1. Identify the peak of the infection (maximum number of infectious individuals) and the time at which it occurs.***
+
+The peak of the infection occurs at around 40 days, and the number of infected individuals at this time is around 250. The peak of the epidemic occurs at around 70 days, and the number of new cases at this time is around 100. The peak of the infection is an important milestone in the course of an epidemic, and it can be influenced by a number of factors, including the transmissibility of the disease, the size of the population, and the effectiveness of public health interventions. In the case of the graph, the peak of the epidemic occurs relatively late, which suggests that the disease is not spreading as rapidly as it could be. This could be due to a number of factors, such as the fact that the population is not as dense and there is not as much contact between people.
+
+***2. Calculate the final size of the epidemic (total number of recovered and dead individuals) and interpret the result.***
+
+The calculated final epidemic size is about 963 individuals, and it represents the total number of individuals affected by the disease over the entire simulation period. A high final size indicates a more severe epidemic with a larger proportion of the population impacted. The proportion of the population affected is about 0.96,(96%) which is very high. This indicates a severe and widespread outbreak.
+
+```{r}
+# Extract final values
+final_state <- output_df1[nrow(output_df1), c("R", "D")]
+
+# Calculate final epidemic size
+final_size <- sum(final_state)
+
+cat("Final epidemic size:", final_size, "\n")
+
+total_population <- 1000
+
+# Calculate the proportion of the population affected
+proportion_affected <- final_size / total_population
+
+cat("Proportion of the population affected:", proportion_affected, "\n")
+
+```
+***3. Discuss the implications of your findings for public health policy. What measures could be taken to control the outbreak?***
+
+Such a high proportion of affected individuals has significant public health implications such as;
+
+- Overburdened healthcare systems - A massive influx of patients can overwhelm healthcare resources, leading to delays in treatment and potentially increased mortality.
+- Economic disruption - Widespread illness can lead to labor shortages, business closures, and economic downturn.
+- Social and psychological impact - The outbreak can cause fear, anxiety, and social isolation, affecting mental health and well-being.
+
+Measures that can be taken are;
+- Stricter social distancing measures - Enforce lock-downs or stringent restrictions on gatherings and mobility.
+- Mass vaccination campaigns - Prioritize the development and rapid deployment of effective vaccines.
+- Enhanced contact tracing and isolation - Expand contact tracing efforts and enforce strict isolation for infected individuals.
+- Strengthening healthcare infrastructure - Increase hospital capacity, procure necessary medical supplies, and train healthcare workers.
+- Public health education and communication - Provide clear and consistent information to the public to promote compliance with preventive measures.
+
+
+**Sensitivity Analysis (20 points)**
+***1. Perform a sensitivity analysis by varying the parameters 𝛽, 𝜎, 𝛾, and 𝜇. Explain how changes in these parameters affect the dynamics of the disease spread.***
+
+Expected Impact of Parameter Changes
+**β (transmission rate)**
+Increasing β will lead to a faster spread of the disease, a higher peak of infected individuals, and potentially a larger final epidemic size.
+Decreasing β will slow down the epidemic, lower the peak, and reduce the final epidemic size.
+
+**σ (incubation rate)**
+Increasing σ will shorten the incubation period, potentially leading to a faster rise in the number of infected individuals.
+Decreasing σ will lengthen the incubation period, delaying the onset of the epidemic.
+
+**γ (recovery rate)**
+Increasing γ will speed up the recovery process, reducing the peak number of infected individuals and potentially decreasing the final epidemic size.
+Decreasing γ will prolong the infectious period, increasing the peak and final epidemic size.
+
+**μ (mortality rate)**
+
+Increasing μ will lead to a higher proportion of infected individuals dying, and this can be seen from the plots.
+Decreasing μ will reduce the proportion of deaths.
+
+
+
+```{r}
+
+library(deSolve)
+library(ggplot2)
+library(gridExtra)
+
+# The plot below has the parameters increased (from baseline model).
+
+# Parameters
+beta <- 0.5  # transmission rate per day
+sigma <- 0.3    # rate of moving from exposed to infected per day
+gamma <- 0.2    # recovery rate per day
+mu <- 0.05   # mortality rate per day
+
+# Total population
+N <- 1000
+
+# Initial conditions
+initial_state <- c(S = 970, E = 20, I = 10, R = 0, D = 0)
+
+# Time vector (days)
+times <- seq(0, 180, by = 1)  # simulate for 180 days
+
+# SEIRD model function
+seird_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / N
+    dE <- beta * S * I / N - sigma * E
+    dI <- sigma * E - (gamma + mu) * I
+    dR <- gamma * I
+    dD <- mu * I
+    return(list(c(dS, dE, dI, dR, dD)))
+  })
+}
+
+# Solve the SEIRD equations
+output <- ode(y = initial_state, times = times, func = seird_model, parms = list(beta = beta, sigma = sigma, gamma = gamma, mu = mu))
+
+# Convert output to data frame for plotting
+output_df2 <- as.data.frame(output)
+
+# Plotting the results
+plot2 = ggplot(output_df2, aes(x = time)) +
+  geom_line(aes(y = S, color = "Susceptible"), size = 1) +
+  geom_line(aes(y = E, color = "Exposed"), size = 1) +
+  geom_line(aes(y = I, color = "Infected"), size = 1) +
+  geom_line(aes(y = R, color = "Recovered"), size = 1) +
+  geom_line(aes(y = D, color = "Dead"), size = 1) +
+  labs(x = "Time (days)", y = "Population", color = "Compartment") +
+  scale_color_manual(values = c("Susceptible" = "blue", "Exposed" = "orange", "Infected" = "red", "Recovered" = "green", "Dead" = "black")) +
+  theme_minimal()
+
+
+
+# The plot below has the parameters decreased (from baseline model).
+
+# Parameters
+beta <- 0.2   # transmission rate per day
+sigma <- 0.1    # rate of moving from exposed to infected per day
+gamma <- 0.05    # recovery rate per day
+mu <- 0.0005    # mortality rate per day
+
+# Total population
+N <- 1000
+
+# Initial conditions
+initial_state <- c(S = 970, E = 20, I = 10, R = 0, D = 0)
+
+# Time vector (days)
+times <- seq(0, 180, by = 1)  # simulate for 180 days
+
+# SEIRD model function
+seird_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / N
+    dE <- beta * S * I / N - sigma * E
+    dI <- sigma * E - (gamma + mu) * I
+    dR <- gamma * I
+    dD <- mu * I
+    return(list(c(dS, dE, dI, dR, dD)))
+  })
+}
+
+# Solve the SEIRD equations
+output <- ode(y = initial_state, times = times, func = seird_model, parms = list(beta = beta, sigma = sigma, gamma = gamma, mu = mu))
+
+# Convert output to data frame for plotting
+output_df3 <- as.data.frame(output)
+
+# Plotting the results
+plot3 = ggplot(output_df3, aes(x = time)) +
+  geom_line(aes(y = S, color = "Susceptible"), size = 1) +
+  geom_line(aes(y = E, color = "Exposed"), size = 1) +
+  geom_line(aes(y = I, color = "Infected"), size = 1) +
+  geom_line(aes(y = R, color = "Recovered"), size = 1) +
+  geom_line(aes(y = D, color = "Dead"), size = 1) +
+  labs(x = "Time (days)", y = "Population", color = "Compartment") +
+  scale_color_manual(values = c("Susceptible" = "blue", "Exposed" = "orange", "Infected" = "red", "Recovered" = "green", "Dead" = "black")) +
+  theme_minimal()
+
+
+# Combine plots
+grid.arrange(plot2, plot3, ncol = 2)
+
+```
+
+
+
+**2. Evaluate the impact of a specific parameter modification strategy (e.g., reducing 𝛽 through social distancing or increasing 𝜎 through early detection and isolation) on the epidemic. Provide plots and discuss your findings.**
+
+**Using the above plots**
+
+***By reducing β, we expect;***
+
+- Slower spread - The number of infected individuals (I) will rise at a slower rate compared to the baseline scenario.(First plot)
+- Lower peak - The peak number of infected individuals will be lower with social distancing measures.
+- Delayed peak - The peak of the epidemic might occur later due to the slower spread.
+- Potentially smaller final size - Social distancing may lead to a smaller final epidemic size (fewer total infected and recovered individuals).
+
+By comparing the plots for the baseline and reduced β scenarios, we can visually confirm the effectiveness of reducing the transmission rate. Reducing β eg. by social distancing helps "flatten the curve" of the epidemic, reducing the strain on healthcare systems and potentially saving lives.
+
+***By increasing σ, we expect;***
+
+Sigma (σ) represents the rate at which exposed individuals (E) become infectious (I). Therefore, increasing sigma means that individuals transition from the exposed to the infectious compartment more rapidly.
+
+We expect;
+
+- Faster progression to infectious stage
+- The average time between exposure and the onset of infectiousness decreases.(shorter incubation period)
+- The peak of the infected population curve will likely occur sooner.
+- The rise in the number of infected individuals might be more rapid.
+- The overall final epidemic size (total recovered + dead) might not be significantly affected unless other parameters are also altered.
+- Increased strain on healthcare systems - A faster progression to the infectious stage can lead to a sudden surge in cases, potentially overwhelming healthcare resources.
+- Rapid progression can make contact tracing more difficult as infected individuals might spread the disease before symptoms appear.
+- Early detection and isolation become even more critical to prevent widespread transmission.
+
+***By increasing Gamma***
+Gamma (γ) (recoverary rate) determines the rate at which infected individuals transition from the infectious (I) compartment to the recovered (R) compartment.
+
+We expect;
+
+- Increasing gamma means individuals recover from the infection at a faster rate.
+- The peak of the infected population curve will be lower as individuals move out of the infected compartment more quickly.
+- The peak of the infected population curve will occur earlier due to the faster recovery rate.
+-The overall duration of the epidemic will be shorter as individuals recover more quickly.
+- The total number of individuals infected over the course of the epidemic will be lower due to faster recovery and reduced transmission opportunities.
+
+***By increasing mu***
+Mu (μ) represents the mortality rate, determining the proportion of infected individuals who die from the disease.
+
+We expect;
+
+- A higher proportion of infected individuals will succumb to the disease.
+- Lower recovery rate - As more individuals die, fewer will recover.
+- Depending on the magnitude of the increase in mu, the peak of the infected population curve might increase. This is because a higher mortality rate doesn't necessarily prevent individuals from becoming infected.
+- As more individuals die, the susceptible population will decline faster.
+
+
+**Intervention Strategy Simulation (20 points)**
+***1. Propose an intervention strategy (e.g., vaccination, quarantine, improved treatment) and modify your model accordingly. Describe the changes you made to the differential equations and parameters.***
+
+***2. Simulate the intervention strategy and compare the results with the baseline scenario. Provide plots and discuss the effectiveness of the intervention.***
+
+
+```{r}
+
+library(deSolve)
+library(ggplot2)
+library(gridExtra)
+
+# Parameters
+beta <- 0.357   # transmission rate per day
+sigma <- 0.2    # rate of moving from exposed to infected per day
+gamma <- 0.1    # recovery rate per day
+mu <- 0.005    # mortality rate per day
+
+# Total population
+N <- 1000
+
+# Initial conditions
+initial_state <- c(S = 970, E = 20, I = 10, R = 0, D = 0)
+
+# Time vector (days)
+times <- seq(0, 180, by = 1)  # simulate for 180 days
+
+# SEIRD model function
+seird_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / N
+    dE <- beta * S * I / N - sigma * E
+    dI <- sigma * E - (gamma + mu) * I
+    dR <- gamma * I
+    dD <- mu * I
+    return(list(c(dS, dE, dI, dR, dD)))
+  })
+}
+
+# Solve the SEIRD equations
+output <- ode(y = initial_state, times = times, func = seird_model, parms = list(beta = beta, sigma = sigma, gamma = gamma, mu = mu))
+
+# Convert output to data frame for plotting
+output_df1 <- as.data.frame(output)
+
+plot11 = ggplot(output_df1, aes(x = time)) +
+    geom_line(aes(y = S, color = "Susceptible"), size = 1) +
+    geom_line(aes(y = E, color = "Exposed"), size = 1) +
+    geom_line(aes(y = I, color = "Infected"), size = 1) +
+    geom_line(aes(y = R, color = "Recovered"), size = 1) +
+    geom_line(aes(y = D, color = "Dead"), size = 1) +
+    labs(x = "Time (days)", y = "Population", color = "Compartment") +
+    scale_color_manual(values = c("Susceptible" = "blue", "Exposed" = "orange", "Infected" = "red", "Recovered" = "green", "Dead" = "black")) +
+    theme_minimal()
+
+
+
+# SEIRV model function (with Vaccination)
+seirv_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    N <- S + E + I + R + D
+    dS <- -beta * S * I / N - v * S
+    dE <- beta * S * I / N - sigma * E
+    dI <- sigma * E - (gamma + mu) * I
+    dR <- gamma * I
+    dD <- mu * I
+    return(list(c(dS, dE, dI, dR, dD)))
+  })
+}
+
+# Vaccination parameters
+v <- 0.02  # Vaccination rate per day
+
+# Solve the SEIRV equations
+output_v <- ode(y = initial_state, times = times, func = seirv_model, parms = list(beta = beta, sigma = sigma, gamma = gamma, mu = mu, v = v))
+
+# Convert output to data frame for plotting
+output_df4 <- as.data.frame(output_v)
+
+
+  plot12 = ggplot(output_df4, aes(x = time)) +
+    geom_line(aes(y = S, color = "Susceptible"), size = 1) +
+    geom_line(aes(y = E, color = "Exposed"), size = 1) +
+    geom_line(aes(y = I, color = "Infected"), size = 1) +
+    geom_line(aes(y = R, color = "Recovered"), size = 1) +
+    geom_line(aes(y = D, color = "Dead"), size = 1) +
+    labs(x = "Time (days)", y = "Population", color = "Compartment") +
+    scale_color_manual(values = c("Susceptible" = "blue", "Exposed" = "orange", "Infected" = "red", "Recovered" = "green", "Dead" = "black")) +
+    theme_minimal()
+
+
+# Combine plots
+grid.arrange(plot11, plot12, ncol = 2)
+
+```
+
+The intervention chosen is vaccination, with a rate of 0.02.
+
+To incorporate vaccination, we modify the equation for dS/dt;
+
+dS/dt = -βSI/N - vS;
+
+thus 
+
+dS <- -beta * S * I / N - v * S
+    dE <- beta * S * I / N - sigma * E
+    dI <- sigma * E - (gamma + mu) * I
+    dR <- gamma * I
+    dD <- mu * I
+
+The term -vS was added to the dS/dt equation to represent individuals who are vaccinated.
+The parameter v was introduced to quantify the rate of vaccination.(0.02)
+
+**Observations** 
+
+**Peak Infected Population**
+Without vaccination - The peak of infected individuals is significantly higher and occurs earlier.
+With vaccination - The peak is lower and occurs later, indicating that vaccination helps flatten the curve and delays the peak of the epidemic.
+
+**Final Epidemic Size**
+Without vaccination - A larger proportion of the population becomes infected.
+With vaccination - A smaller proportion of the population is infected, demonstrating the effectiveness of vaccination in reducing the final epidemic size.
+
+**Susceptible Population**
+Without vaccination - The susceptible population declines rapidly as the epidemic progresses.
+With vaccination - The susceptible population decreases more gradually due to vaccination, leading to a lower peak of infected individuals.
+
+**Exposed population**
+With vaccination - Vaccination reduces the number of susceptible individuals (S). This leads to a decrease in the number of new infections, consequently impacting the flow of individuals into the exposed compartment.
+The peak of the exposed population is slightly delayed due to the slower rate of new infections.
+The overall number of individuals in the exposed compartment is generally lower due to reduced transmission.
+
+**Recovered Population**
+Vaccination indirectly leads to a higher number of recovered individuals over time.
+Reduced burden on healthcare - A larger recovered population means fewer individuals needing medical care, reducing the strain on healthcare systems.
+
+**Dead Population**
+The most significant impact of vaccination is a reduction in the number of deaths. By preventing infections, vaccination directly saves lives.
+

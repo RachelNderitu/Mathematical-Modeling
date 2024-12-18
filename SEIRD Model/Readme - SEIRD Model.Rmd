@@ -1,0 +1,93 @@
+---
+title: "Readme - SEIRD Model"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+### **Summary of the SEIRD Model Project**
+
+#### **Objective:**
+This project uses the SEIRD (Susceptible, Exposed, Infected, Recovered, Dead) model to study the dynamics of infectious disease spread and evaluates intervention strategies, particularly vaccination, to control outbreaks and reduce their impact.
+
+---
+
+### **Key Components:**
+
+#### **1. Model Definition:**
+- **Compartments:**
+  - **Susceptible (S):** At-risk individuals who can become exposed.
+  - **Exposed (E):** Infected individuals in the incubation period, not yet infectious.
+  - **Infected (I):** Actively contagious individuals.
+  - **Recovered (R):** Individuals who have recovered and are immune.
+  - **Dead (D):** Individuals who succumbed to the disease.
+- **Differential Equations:** Govern transitions between compartments based on parameters like:
+  - Transmission rate (\( \beta \)): Rate of infection spread.
+  - Incubation rate (\( \sigma \)): Transition from exposed to infected.
+  - Recovery rate (\( \gamma \)): Transition from infected to recovered.
+  - Mortality rate (\( \mu \)): Transition from infected to dead.
+
+#### **2. Baseline Simulation:**
+- **Initial Conditions:**
+  - \( S(0) = 970, E(0) = 20, I(0) = 10, R(0) = 0, D(0) = 0 \), with a total population of 1000.
+- **Parameter Values:**
+  - \( \beta = 0.357, \sigma = 0.2, \gamma = 0.1, \mu = 0.005 \).
+- **Findings:**
+  - The infection curve peaks at day 40, with approximately 250 infected individuals.
+  - The epidemic size (total recovered + dead) is around 963 individuals, representing 96% of the population.
+  - Key milestones:
+    - Exposed population peaks at day 30.
+    - Infected population plateaus from day 90.
+    - Recovered population stabilizes by day 75.
+    - Death toll stabilizes at 50 individuals.
+
+---
+
+### **3. Sensitivity Analysis:**
+- **Impact of Parameters:**
+  - **Transmission rate (\( \beta \)):**
+    - Higher \( \beta \) leads to faster spread, higher peaks, and a larger epidemic size.
+    - Lower \( \beta \) delays and flattens the infection curve.
+  - **Incubation rate (\( \sigma \)):**
+    - Higher \( \sigma \) accelerates the transition to infection, leading to earlier and sharper peaks.
+    - Lower \( \sigma \) delays the epidemic progression.
+  - **Recovery rate (\( \gamma \)):**
+    - Higher \( \gamma \) reduces the infectious period, lowering and shortening the peak.
+    - Lower \( \gamma \) prolongs infection duration and increases the burden.
+  - **Mortality rate (\( \mu \)):**
+    - Higher \( \mu \) results in more deaths and a lower recovered population.
+    - Lower \( \mu \) reduces mortality but may increase overall infections due to prolonged infectious periods.
+
+---
+
+### **4. Intervention Strategy: Vaccination**
+- **Modified Model:**
+  - Introduced a vaccination term (\( vS \)) to the Susceptible compartment:
+    \[
+    \frac{dS}{dt} = -\beta \frac{S I}{N} - vS
+    \]
+    - \( v \): Vaccination rate (e.g., 0.02 per day).
+- **Findings with Vaccination:**
+  - **Infection Peak:**
+    - Lower and delayed compared to the baseline.
+  - **Final Epidemic Size:**
+    - Reduced significantly, demonstrating vaccination effectiveness.
+  - **Exposed and Dead Populations:**
+    - Both show reduced peaks and overall numbers, saving lives.
+  - **Susceptible and Recovered Populations:**
+    - Gradual decline in susceptibles due to vaccination.
+    - Higher recovered population due to reduced infections.
+
+---
+
+### **5. Public Health Implications:**
+- **Without Interventions:**
+  - High infection and mortality rates overwhelm healthcare systems, with 96% of the population affected.
+- **With Vaccination:**
+  - Delays and flattens the epidemic curve, reduces peak burden, and lowers mortality.
+  - Highlights the critical role of vaccination in controlling outbreaks, preserving healthcare capacity, and saving lives.
+
+---
+
+### **Conclusions:**
+The SEIRD model effectively captures the dynamics of disease spread and the impact of vaccination. By integrating sensitivity analyses and intervention strategies, the project demonstrates how public health measures, particularly vaccination, can mitigate the severity of an epidemic, reduce mortality, and prevent healthcare system collapse.

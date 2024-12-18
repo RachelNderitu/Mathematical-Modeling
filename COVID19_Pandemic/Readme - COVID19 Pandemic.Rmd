@@ -1,0 +1,66 @@
+---
+title: "Managing COVID19 pandemic in Kenya - a hypothetical scenario"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+***COVID-19 Pandemic in Kenya- a hypothetical situation***
+
+**Usage**
+
+Install necessary R libraries and run the R script in your preferred environment to simulate the epidemic and generate visualizations.
+
+**Objective**
+
+This project models and analyzes the impact of COVID-19 spread and the effectiveness of vaccination strategies in Kenya, using an SIR (Susceptible, Infected, Recovered) framework. It provides insights into epidemic dynamics and evaluates the role of public health interventions.
+
+**Key Findings**
+
+***1. Model Framework***
+
+The SIR model was used, consisting of three compartments:
+Susceptible (S): Individuals at risk of infection.
+Infected (I): Actively infected individuals spreading the disease.
+Recovered (R): Individuals who recovered and gained immunity.
+
+**Transition rates**
+
+Susceptible to Infected: 
+β⋅S⋅I/N
+
+Infected to Recovered: 
+γ⋅I
+
+***2. Simulation Results***
+
+**Baseline Scenario (No Vaccination)**
+
+Without vaccination, the infection curve peaked at approximately 10 million infected individuals around day 50.
+The epidemic persisted for the entire simulation period, highlighting high healthcare demands.
+
+**Vaccination Scenarios**
+
+20% Vaccination Coverage (10 million individuals):
+The infection peak reduced significantly.
+Peak occurred later (day 83), and the infection rate dropped to nearly zero by day 150.
+Highlights the flattening and delay of the epidemic curve.
+40% Vaccination Coverage (20 million individuals):
+The susceptible population dropped sharply.
+Infection rate peaked earlier but was reduced to zero by day 75, indicating strong control of the epidemic.
+
+***3. Transmission Rate (β)***
+
+Role: Determines how quickly the disease spreads in the population.
+Impact of Public Health Interventions:
+Reducing β through strategies like vaccination, social distancing, mask-wearing, and hygiene reduces the spread and peak infections.
+Effective interventions shift the dynamics, resulting in manageable epidemic curves and lower strain on healthcare systems.
+
+***Visualizations***
+
+Line Plots: Illustrated the trends in susceptible, infected, recovered, and vaccinated individuals across different scenarios.
+Vaccination led to steady declines in susceptible individuals, reduced infection peaks, and increased immunity levels.
+
+**Conclusion**
+
+This project demonstrates the critical role of vaccination and public health measures in controlling the COVID-19 epidemic in Kenya. Timely and widespread vaccination significantly flattens and shortens the epidemic, while reducing β through behavioral interventions is crucial in slowing disease spread. Together, these strategies ensure a sustainable and manageable healthcare response.

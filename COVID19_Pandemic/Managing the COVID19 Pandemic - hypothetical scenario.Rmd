@@ -1,0 +1,401 @@
+---
+title: "Managing the COVID19 Pandemic - hypothetical scenario"
+author: "Rachel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+BACKGROUND:
+Kenya, like many countries around the world, has faced challenges in managing the COVID19 pandemic. For this hypothetical scenario, we’ll consider a situation where the government of Kenya is analyzing the impact of COVID-19 spread and the effectiveness of vaccination strategies. We also want to visualize the dynamics of the epidemic under the given parameters.
+
+Parameters:
+Population Size: 50 million individuals
+Initial Infected Individuals: 500
+Initial Recovered Individuals: 0
+Duration of Infectiousness: 10 days
+Transmission Rate: 0.3 (per day)
+Recovery Rate: 1/10 (0.1 per day)
+Simulation Period: 180 days
+
+Question 1: Model Framework (5 Marks)
+
+Generate the schematic framework to illustrate the compartments and the rates across different compartments
+
+Write an R code snippet to initialize the parameters and initial state values for the given COVID-19 scenario in Kenya.
+
+
+```{r}
+
+library(DiagrammeR)
+
+grViz("
+digraph flowchart {
+  graph [layout = dot, rankdir = LR]
+  node [fontname = Helvetica, shape = rectangle]
+
+  # Define nodes
+  tab1 [label = '@@1']
+  tab2 [label = '@@2']
+  tab3 [label = '@@3'] 
+
+  # Define edges with transition rates
+  tab1 -> tab2 [label = 'beta * S * I / N']
+  tab2 -> tab3 [label = 'gamma * I']
+}
+
+[1]: 'Susceptible'
+[2]: 'Infected'
+[3]: 'Recovered'
+")
+
+```
+
+This code creates a flowchart with the following elements:
+
+Nodes representing the compartments: Susceptible (S), Infected (I), and Recovered (R).
+Directed edges between the nodes, labeled with the corresponding transition rates;
+From Susceptible (S) to Infected (I) with the rate ***𝛽.𝑆.𝐼/𝑁***
+
+From Infected (I) to Recovered (R) with the rate ***γ.I***
+
+```{r}
+
+# Initialize the necessary parameters
+population_size <- 50000000  # Total population size
+initial_infected <- 500      # Initial number of infected individuals
+initial_recovered <- 0       # Initial number of recovered individuals
+initial_susceptible <- population_size - initial_infected - initial_recovered  # Initial number of susceptible individuals
+
+duration_of_infectiousness <- 10  # Duration of infectiousness (days)
+transmission_rate <- 0.3         # Transmission rate (per day)
+recovery_rate <- 1 / duration_of_infectiousness  # Recovery rate (per day)
+
+simulation_period <- 180  # Simulation period (days)
+
+# Initial state values
+initial_state <- c(
+  S = initial_susceptible,  # Susceptible individuals
+  I = initial_infected,     # Infected individuals
+  R = initial_recovered     # Recovered individuals
+)
+
+# Parameters list
+parameters <- c(
+  beta = transmission_rate,  # Transmission rate
+  gamma = recovery_rate      # Recovery rate
+)
+
+# Print the initialized values
+print(initial_state)
+print(parameters)
+
+```
+Question 2: Model Implementation (5 Marks)
+
+Implement the SIR model in R using the parameters defined in the scenario.
+Your implementation should define the model equations and solve them over a
+period of 180 days.
+
+Explain the role of each parameter in the SIR model and how it influences the dynamics of the epidemic.
+
+```{r}
+library(deSolve)
+
+# Define the SIR model equations
+sir_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / population_size
+    dI <- beta * S * I / population_size - gamma * I
+    dR <- gamma * I
+    
+    return(list(c(dS, dI, dR)))
+  })
+}
+
+# Time sequence for simulation
+times <- seq(0, 180, by = 1)
+
+# Solve the SIR model
+output <- ode(y = initial_state, times = times, func = sir_model, parms = parameters)
+
+# Convert output to data frame
+output_df <- as.data.frame(output)
+
+```
+
+**Parameters**
+
+Transmission Rate (β) - Determines how quickly susceptible individuals become infected. Higher β increases the spread rate, leading to a faster and more extensive outbreak.
+
+Recovery Rate (𝛾)- Determines how quickly infected individuals recover and move to the recovered compartment. Higher𝛾reduces the number of infected individuals at any time, shortening the epidemic duration.
+
+Population Size (𝑁) - Total number of individuals in the population. Larger 𝑁scales the absolute numbers of susceptible, infected, and recovered individuals.
+
+**Initial State Values**
+
+Initial Susceptible (𝑆0) - Number of individuals initially at risk of infection. Larger𝑆0 means more people can potentially become infected, leading to a larger outbreak.
+
+Initial Infected (𝐼0) - Number of individuals initially infected. Higher 
+𝐼0 leads to a faster initial spread of the disease.
+
+Initial Recovered (𝑅0) - Number of individuals initially recovered and immune. Higher𝑅0 means fewer people are initially at risk, potentially slowing the epidemic's start.
+
+These parameters shape the epidemic's dynamics, influencing how quickly and extensively the disease spreads and how long it persists.
+
+
+Question 3: Data Analysis and Visualization (5 Marks)
+
+Create a line plot showing the number of susceptible, infected, recovered, and vaccinated individuals over time for the model implemented.
+Ensure your plot is well-labeled and includes a legend.
+
+
+```{r}
+
+library(deSolve)
+library(ggplot2)
+
+# Define parameters
+population_size <- 50000000  # Total population size
+initial_infected <- 500      # Initial number of infected individuals
+initial_recovered <- 0       # Initial number of recovered individuals
+initial_susceptible <- population_size - initial_infected - initial_recovered  # Initial number of susceptible individuals
+
+duration_of_infectiousness <- 10  # Duration of infectiousness (days)
+transmission_rate <- 0.3         # Transmission rate (per day)
+recovery_rate <- 1 / duration_of_infectiousness  # Recovery rate (per day)
+
+vaccination_start_day <- 0     # Day when vaccination starts
+vaccination_rate <- 100000    # Vaccination rate per day
+
+simulation_period <- 180  # Simulation period (days)
+
+# Initial state values
+initial_state <- c(
+  S = initial_susceptible,  # Susceptible individuals
+  I = initial_infected,     # Infected individuals
+  R = initial_recovered,    # Recovered individuals
+  V = 0                      # Vaccinated individuals
+)
+
+# Parameters list
+parameters <- c(
+  beta = transmission_rate,  # Transmission rate
+  gamma = recovery_rate,     # Recovery rate
+  v_rate = vaccination_rate # Vaccination rate
+)
+
+# Define the SIR model equations with vaccination
+sir_model_with_vaccination <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / population_size - v_rate * ifelse(time >= vaccination_start_day, 1, 0)
+    dI <- beta * S * I / population_size - gamma * I
+    dR <- gamma * I
+    dV <- v_rate * ifelse(time >= vaccination_start_day, 1, 0)
+    
+    return(list(c(dS, dI, dR, dV)))
+  })
+}
+
+# Time sequence for simulation
+times <- seq(0, simulation_period, by = 1)
+
+# Solve the SIR model with vaccination
+output_with_vaccination <- ode(y = initial_state, times = times, func = sir_model_with_vaccination, parms = parameters)
+
+# Convert output to data frame
+output_df_with_vaccination <- as.data.frame(output_with_vaccination)
+
+# Plot the results
+ggplot(data = output_df_with_vaccination, aes(x = time)) +
+  geom_line(aes(y = S, color = "Susceptible")) +
+  geom_line(aes(y = I, color = "Infected")) +
+  geom_line(aes(y = R, color = "Recovered")) +
+  geom_line(aes(y = V, color = "Vaccinated"), linetype = "dashed") +
+  labs(title = "SIR Model with Vaccination Simulation",
+       x = "Days",
+       y = "Number of Individuals",
+       color = "Compartment") +
+  theme_minimal()
+
+```
+
+νaccination rate picked = 100,000 daily vaccinations
+v = Susceptible Population/Daily Vaccinations 
+= 49,999,500/100,000 = 0.002
+
+
+There's steady decline of susceptible individuals from day 0 due to ongoing vaccination and infections.
+
+Peak of Infected Curve - this is lower compared to a no-vaccination scenario, due to the reduction in the susceptible population. It is at just over 10 million individuals.
+
+There's a linear increase of vaccination rate, from day 0, at a constant rate.
+
+This simulation provides a visual and quantitative understanding of how vaccination impacts the dynamics of an epidemic, emphasizing the importance of timely and widespread vaccination efforts.
+
+Question 4: Intervention (5 Marks)
+Assume a vaccination of 20% of the population. Discuss how the vaccination rate affects the epidemic curve.
+
+
+```{r}
+
+library(deSolve)
+library(ggplot2)
+
+# parameters
+population_size <- 50000000  # Total population size
+initial_infected <- 500      # Initial number of infected individuals
+initial_recovered <- 0       # Initial number of recovered individuals
+initial_susceptible <- population_size - initial_infected - initial_recovered  # Initial number of susceptible individuals
+
+duration_of_infectiousness <- 10  # Duration of infectiousness (days)
+transmission_rate <- 0.3         # Transmission rate (per day)
+recovery_rate <- 1 / duration_of_infectiousness  # Recovery rate (per day)
+
+vaccination_coverage <- 0.20   # Vaccination coverage (20% of the population)
+
+# Calculate the number of individuals to vaccinate
+num_to_vaccinate <- round(vaccination_coverage * population_size)
+
+# Define the vaccination start day
+vaccination_start_day <- 1
+
+# Calculate the daily vaccination rate
+vaccination_rate <- num_to_vaccinate / (180 - vaccination_start_day + 1)  # Total days for vaccination
+
+# Initial state values
+initial_state <- c(
+  S = initial_susceptible - num_to_vaccinate,  # Susceptible individuals (excluding vaccinated)
+  I = initial_infected,                        # Infected individuals
+  R = initial_recovered,                       # Recovered individuals
+  V = num_to_vaccinate                         # Vaccinated individuals
+)
+
+# Parameters list
+parameters <- c(
+  beta = transmission_rate,  # Transmission rate
+  gamma = recovery_rate,     # Recovery rate
+  v_rate = vaccination_rate  # Vaccination rate
+)
+
+# Define the SIR model equations with vaccination
+sir_model_with_vaccination <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS <- -beta * S * I / population_size - v_rate * ifelse(time >= vaccination_start_day, 1, 0)
+    dI <- beta * S * I / population_size - gamma * I
+    dR <- gamma * I
+    dV <- v_rate * ifelse(time >= vaccination_start_day, 1, 0)
+    
+    return(list(c(dS, dI, dR, dV)))
+  })
+}
+
+# Time sequence for simulation
+times <- seq(0, 180, by = 1)
+
+# Solve the SIR model with vaccination
+output_with_vaccination <- ode(y = initial_state, times = times, func = sir_model_with_vaccination, parms = parameters)
+
+# Convert output to data frame
+output_df_with_vaccination <- as.data.frame(output_with_vaccination)
+
+# Plot the results
+ggplot(data = output_df_with_vaccination, aes(x = time)) +
+  geom_line(aes(y = S, color = "Susceptible")) +
+  geom_line(aes(y = I, color = "Infected")) +
+  geom_line(aes(y = R, color = "Recovered")) +
+  geom_line(aes(y = V, color = "Vaccinated"), linetype = "dashed") +
+  labs(title = "SIR Model with 20% Vaccination Coverage",
+       x = "Days",
+       y = "Number of Individuals",
+       color = "Compartment") +
+  theme_minimal()
+
+```
+
+
+The 20% vaccination rate (10M individuals) causes the following;
+
+A larger proportion of the population becomes immune, reducing the pool of susceptible individuals available for infection. The susceptible population significantly and quickly drops from about day 50.
+
+It flattens the epidemic curve by slowing the spread of the disease. This results in a lower peak of infections and a more manageable burden on healthcare systems. By about day 150, the infection rate is at about zero. 
+
+It delays the peak of the epidemic as a larger portion of the population becomes immune. The peak comes at around day 83, much later that before this vaccination rate.
+
+
+
+What changes do you observe in the number of infected individuals when the
+vaccination rate is doubled?
+
+
+```{r}
+
+# parameters
+vaccination_coverage <- 0.40   # Vaccination coverage (40% of the population)
+
+# Calculate the number of individuals to vaccinate
+num_to_vaccinate <- round(vaccination_coverage * population_size)
+
+# Calculate the daily vaccination rate
+vaccination_rate <- num_to_vaccinate / (180 - vaccination_start_day + 1)  # Total days for vaccination
+
+# Initial state values
+initial_state <- c(
+  S = initial_susceptible - num_to_vaccinate,  # Susceptible individuals (excluding vaccinated)
+  I = initial_infected,                        # Infected individuals
+  R = initial_recovered,                       # Recovered individuals
+  V = num_to_vaccinate                         # Vaccinated individuals
+)
+
+# Parameters list
+parameters <- c(
+  beta = transmission_rate,  # Transmission rate
+  gamma = recovery_rate,     # Recovery rate
+  v_rate = vaccination_rate  # Vaccination rate
+)
+
+# Solve the SIR model with vaccination
+output_with_vaccination_40 <- ode(y = initial_state, times = times, func = sir_model_with_vaccination, parms = parameters)
+
+# Convert output to data frame
+output_df_with_vaccination_40 <- as.data.frame(output_with_vaccination_40)
+
+# Plot the results
+ggplot(data = output_df_with_vaccination_40, aes(x = time)) +
+  geom_line(aes(y = S, color = "Susceptible")) +
+  geom_line(aes(y = I, color = "Infected")) +
+  geom_line(aes(y = R, color = "Recovered")) +
+  geom_line(aes(y = V, color = "Vaccinated"), linetype = "dashed") +
+  labs(title = "SIR Model with 40% Vaccination Coverage",
+       x = "Days",
+       y = "Number of Individuals",
+       color = "Compartment") +
+  theme_minimal()
+
+```
+
+At 40% vaccination rate,(20M individuals) there's a sharp decrease in the susceptible population. By about day 48, the number of susceptible and vaccinated individuals is the same, therefore there is zero infection rate by day 75, and it stays at zero till day 180.
+Since the infection rate is at zero, recovery rate is at near zero since there are no infections.
+
+
+Explain the importance of the transmission rate (𝛽) and how public health
+interventions could reduce this rate.
+
+The transmission rate (𝛽) is a critical parameter in infectious disease epidemiology as it determines the likelihood of disease transmission from an infected individual to a susceptible individual. 
+The transmission rate is important in the following;
+
+1. It directly influences the rate of epidemic spread within a population. A higher transmission rate leads to more rapid spread of the disease, resulting in larger outbreaks and potentially overwhelming healthcare systems. Therefore, controlling the transmission rate is essential for mitigating the impact of epidemics and pandemics.
+
+2. By reducing the transmission rate, public health interventions not only prevent primary cases of infection but also prevent secondary and tertiary cases. This leads to a cascading effect, ultimately reducing the overall burden of disease within the population.
+
+3. It influences the effectiveness of interventions. Public health interventions, such as vaccination, social distancing, mask-wearing, hand hygiene, quarantine, and isolation, directly target the transmission rate by reducing the opportunities for disease transmission. eg.
+
+- Vaccination reduces the susceptibility of individuals, effectively lowering the transmission rate by reducing the number of susceptible individuals in the population.
+- Social distancing measures, such as limiting gatherings, reduce person-to-person contact, thereby lowering the likelihood of disease transmission.
+- Mask-wearing reduces the spread of respiratory droplets containing the virus, effectively lowering the transmission rate in settings where close contact is unavoidable.
+- Hand hygiene practices, such as frequent hand-washing with soap and water, reduce the risk of contamination and transmission of infectious agents.
+- Quarantine and isolation measures prevent infected individuals from coming into contact with susceptible individuals, effectively reducing the transmission rate within the community.
+
+
+
+
+
